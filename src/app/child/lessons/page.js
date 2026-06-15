@@ -45,15 +45,7 @@ export default function ChildLessonsPage() {
 
               {/* Action downloads footer */}
               {(lesson.fileUrl || lesson.videoUrl) && (
-                <div style={{
-                  padding: '1rem 1.5rem',
-                  borderTop: '1px solid #E2E8F0',
-                  background: '#F7FAFC',
-                  borderBottomLeftRadius: '12px',
-                  borderBottomRightRadius: '12px',
-                  display: 'flex',
-                  gap: '0.75rem'
-                }}>
+                <div className="lesson-footer">
                   {lesson.fileUrl && (
                     <a
                       href={lesson.fileUrl}

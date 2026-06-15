@@ -18,6 +18,7 @@ export default function ServantChildrenPage() {
   const [selectedChild, setSelectedChild] = useState(null);
   const [newChild, setNewChild] = useState({ name: '', parentContact: '' });
   const [pointsInput, setPointsInput] = useState({ amount: 10, reason: '' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleAddChild = async (e) => {
     e.preventDefault();
@@ -56,6 +57,10 @@ export default function ServantChildrenPage() {
       showToast('حدث خطأ أثناء تعديل النقاط', 'error');
     }
   };
+
+  const filteredChildren = searchQuery
+    ? children.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : children;
 
   const columns = [
     {
@@ -97,14 +102,38 @@ export default function ServantChildrenPage() {
         </button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={children}
-        loading={loading}
-        searchable
-        searchPlaceholder="بحث عن طفل..."
-        searchKeys={['name']}
-        emptyState={
+      <div style={{ marginBottom: '1.25rem' }}>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="بحث عن طفل بالاسم..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ maxWidth: '320px' }}
+        />
+      </div>
+
+      <div className="hide-on-mobile">
+        <DataTable
+          columns={columns}
+          data={filteredChildren}
+          loading={loading}
+          emptyState={
+            <EmptyState
+              icon="👦"
+              title="لا يوجد أطفال في الفصل"
+              description="أضف أول طفل لفصلك"
+              actionLabel="إضافة طفل"
+              onAction={() => setShowAddModal(true)}
+            />
+          }
+        />
+      </div>
+
+      <div className="show-on-mobile">
+        {loading ? (
+          <p style={{ textAlign: 'center', padding: '2rem' }}>جاري التحميل...</p>
+        ) : filteredChildren.length === 0 ? (
           <EmptyState
             icon="👦"
             title="لا يوجد أطفال في الفصل"
@@ -112,8 +141,35 @@ export default function ServantChildrenPage() {
             actionLabel="إضافة طفل"
             onAction={() => setShowAddModal(true)}
           />
-        }
-      />
+        ) : (
+          <div className="mobile-card-list">
+            {filteredChildren.map((child) => (
+              <div key={child.uid} className="mobile-card">
+                <div className="mobile-card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '1.4rem' }}>{child.avatarId || '👦'}</span>
+                    <span style={{ fontWeight: 'bold', color: 'var(--text-dark)', fontFamily: 'Cairo' }}>{child.name}</span>
+                  </div>
+                  <span className="level-badge">{child.level || 'مبتدئ'}</span>
+                </div>
+                <div className="mobile-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="points-badge">⭐ {child.points || 0} نقطة</span>
+                  <button
+                    className="btn btn-primary"
+                    style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setSelectedChild(child);
+                      setShowPointsModal(true);
+                    }}
+                  >
+                    ⭐ تعديل النقاط
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Add Child Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="إضافة طفل جديد">

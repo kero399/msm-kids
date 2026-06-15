@@ -72,18 +72,79 @@ export default function ServantExcusesPage() {
         <h2>📝 أعذار الغياب المقدمة</h2>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={excuses}
-        loading={loading}
-        emptyState={
+      {/* Desktop View */}
+      <div className="hide-on-mobile">
+        <DataTable
+          columns={columns}
+          data={excuses}
+          loading={loading}
+          emptyState={
+            <EmptyState
+              icon="📝"
+              title="لا توجد أعذار غياب"
+              description="لم يتم تقديم أي أعذار غياب من قبل أولياء الأمور لهذا الفصل."
+            />
+          }
+        />
+      </div>
+
+      {/* Mobile View */}
+      <div className="show-on-mobile">
+        {loading ? (
+          <p style={{ textAlign: 'center', padding: '2rem' }}>جاري التحميل...</p>
+        ) : excuses.length === 0 ? (
           <EmptyState
             icon="📝"
             title="لا توجد أعذار غياب"
             description="لم يتم تقديم أي أعذار غياب من قبل أولياء الأمور لهذا الفصل."
           />
-        }
-      />
+        ) : (
+          <div className="mobile-card-list">
+            {excuses.map((excuse) => (
+              <div key={excuse.id} className="mobile-card">
+                <div className="mobile-card-header">
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-dark)', fontFamily: 'Cairo' }}>👦 {excuse.childName}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--med-blue)' }}>📅 {excuse.sessionDate}</span>
+                </div>
+                <div className="mobile-card-body" style={{ fontSize: '0.95rem', fontWeight: 'normal' }}>
+                  <strong>السبب:</strong> {excuse.reason}
+                </div>
+                <div className="mobile-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className={`badge ${excuse.status === 'acknowledged' ? 'badge-green' : excuse.status === 'rejected' ? 'badge-yellow' : 'badge-blue'}`}>
+                    {excuse.status === 'acknowledged' ? 'مقبول' : excuse.status === 'rejected' ? 'مرفوض' : 'قيد الانتظار'}
+                  </span>
+                  
+                  {excuse.status === 'pending' ? (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className="btn btn-primary"
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', background: 'var(--success)', borderColor: 'var(--success)' }}
+                        onClick={() => handleStatusUpdate(excuse.id, 'acknowledged')}
+                      >
+                        قبول
+                      </button>
+                      <button
+                        className="btn"
+                        style={{
+                          padding: '0.35rem 0.75rem', fontSize: '0.8rem',
+                          background: 'rgba(252,129,129,0.1)', color: 'var(--danger)',
+                        }}
+                        onClick={() => handleStatusUpdate(excuse.id, 'rejected')}
+                      >
+                        رفض
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontStyle: 'italic' }}>
+                      الرد: {excuse.acknowledgedBy}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }

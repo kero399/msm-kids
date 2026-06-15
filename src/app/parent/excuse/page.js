@@ -113,7 +113,7 @@ export default function ParentExcusePage() {
         <h2>📝 تقديم عذر غياب مسبق للطفل</h2>
       </div>
 
-      <div className="dashboard-grid" style={{ gridTemplateColumns: '1.2fr 2fr', gap: '2rem', alignItems: 'start' }}>
+      <div className="dashboard-grid" style={{ alignItems: 'start' }}>
         {/* Excuse Form */}
         <div className="dashboard-card" style={{ padding: '1.5rem' }}>
           <h3 className="card-title" style={{ marginBottom: '1.5rem' }}>📝 طلب عذر جديد</h3>
@@ -162,18 +162,54 @@ export default function ParentExcusePage() {
         {/* Excuses History */}
         <div className="dashboard-card" style={{ padding: '1.5rem' }}>
           <h3 className="card-title" style={{ marginBottom: '1.5rem' }}>📋 الطلبات المقدمة سابقاً</h3>
-          <DataTable
-            columns={columns}
-            data={excuses}
-            loading={loading}
-            emptyState={
+          
+          {/* Desktop View */}
+          <div className="hide-on-mobile">
+            <DataTable
+              columns={columns}
+              data={excuses}
+              loading={loading}
+              emptyState={
+                <EmptyState
+                  icon="📝"
+                  title="لا توجد أعذار غياب"
+                  description="لم تقم بتقديم أي أعذار غياب للطفل سابقاً."
+                />
+              }
+            />
+          </div>
+
+          {/* Mobile View */}
+          <div className="show-on-mobile">
+            {excuses.length === 0 ? (
               <EmptyState
                 icon="📝"
                 title="لا توجد أعذار غياب"
                 description="لم تقم بتقديم أي أعذار غياب للطفل سابقاً."
               />
-            }
-          />
+            ) : (
+              <div className="mobile-card-list">
+                {excuses.map((excuse) => (
+                  <div key={excuse.id} className="mobile-card">
+                    <div className="mobile-card-header">
+                      <span style={{ fontWeight: 'bold', color: 'var(--med-blue)', fontFamily: 'Cairo' }}>📅 {excuse.sessionDate}</span>
+                      <span className={`badge ${excuse.status === 'acknowledged' ? 'badge-green' : excuse.status === 'rejected' ? 'badge-yellow' : 'badge-blue'}`}>
+                        {excuse.status === 'acknowledged' ? 'مقبول' : excuse.status === 'rejected' ? 'مرفوض' : 'قيد الانتظار'}
+                      </span>
+                    </div>
+                    <div className="mobile-card-body" style={{ fontSize: '0.95rem', fontWeight: 'normal' }}>
+                      {excuse.reason}
+                    </div>
+                    <div className="mobile-card-footer" style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                      <span>
+                        {excuse.status !== 'pending' ? `الرد: بواسطة ${excuse.acknowledgedBy || 'الخادم'}` : 'في انتظار المراجعة'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>
