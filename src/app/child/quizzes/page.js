@@ -103,22 +103,79 @@ export default function ChildQuizzesPage() {
         <h2>📝 مسابقات وتحديات فصلي</h2>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={quizzes}
-        loading={loading}
-        emptyState={
+      {/* Desktop View */}
+      <div className="hide-on-mobile">
+        <DataTable
+          columns={columns}
+          data={quizzes}
+          loading={loading}
+          emptyState={
+            <EmptyState
+              icon="📝"
+              title="لا توجد مسابقات حالية"
+              description="لم يقم خادم الفصل بنشر أي مسابقات أو تحديات نشطة حتى الآن."
+            />
+          }
+        />
+      </div>
+
+      {/* Mobile View */}
+      <div className="show-on-mobile">
+        {loading ? (
+          <p style={{ textAlign: 'center', padding: '2rem' }}>جاري التحميل...</p>
+        ) : quizzes.length === 0 ? (
           <EmptyState
             icon="📝"
             title="لا توجد مسابقات حالية"
             description="لم يقم خادم الفصل بنشر أي مسابقات أو تحديات نشطة حتى الآن."
           />
-        }
-      />
+        ) : (
+          <div className="mobile-card-list">
+            {quizzes.map((quiz) => {
+              const sub = quiz.submissions && quiz.submissions[user?.uid];
+              const isExpired = new Date(quiz.dueDate) < new Date();
+              return (
+                <div key={quiz.id} className="mobile-card">
+                  <div className="mobile-card-header">
+                    <span style={{ fontWeight: 'bold', color: 'var(--text-dark)', fontFamily: 'Cairo' }}>{quiz.title}</span>
+                    <span className="badge badge-blue">{quiz.pointValue} نقاط</span>
+                  </div>
+                  <div className="mobile-card-body" style={{ fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 'normal' }}>
+                    📅 تاريخ الانتهاء: {new Date(quiz.dueDate).toLocaleDateString('ar-EG')}
+                  </div>
+                  <div className="mobile-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div>
+                      {sub ? (
+                        <span className="badge badge-green">تم الحل ({sub.score}%) ✅</span>
+                      ) : isExpired ? (
+                        <span className="badge" style={{ background: '#E2E8F0', color: '#718096' }}>منتهية ⌛</span>
+                      ) : (
+                        <span className="badge badge-blue">متاحة 📝</span>
+                      )}
+                    </div>
+
+                    <div>
+                      {sub ? (
+                        <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 'bold' }}>+{sub.pointsEarned} نقطة</span>
+                      ) : isExpired ? (
+                        <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>انتهى الوقت</span>
+                      ) : (
+                        <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }} onClick={() => handleStartQuiz(quiz)}>
+                          بدء 🚀
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Quiz Modal */}
-      {activeQuiz && (
-        <Modal title={activeQuiz.title} onClose={() => setActiveQuiz(null)}>
+      <Modal isOpen={!!activeQuiz} title={activeQuiz?.title || ''} onClose={() => setActiveQuiz(null)}>
+        {activeQuiz && (
           <div style={{ padding: '0.5rem 0' }}>
             <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.75rem' }}>
               أجب على الأسئلة التالية بتركيز لتحصل على <strong>{activeQuiz.pointValue}</strong> نقطة كحد أقصى!
@@ -169,8 +226,8 @@ export default function ChildQuizzesPage() {
               </button>
             </div>
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
     </>
   );
 }
