@@ -1,0 +1,167 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // Helper Functions
+    // ============================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isServant() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'servant';
+    }
+
+    function isParent() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+    }
+
+    function isChild() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'child';
+    }
+
+    function getUserClassId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.classId;
+    }
+
+    // ============================================
+    // Users Collection
+    // ============================================
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      // Admin can read/write all users
+      allow read, write: if isAdmin();
+      // Servants can read users in their class
+      allow read: if isServant() &&
+        resource.data.classId == getUserClassId();
+    }
+
+    // ============================================
+    // Classes Collection
+    // ============================================
+    match /classes/{classId} {
+      // Admin: full access
+      allow read, write: if isAdmin();
+      // Servants: read their own class only
+      allow read: if isServant() && classId == getUserClassId();
+      // All authenticated users can read class names (for display)
+      allow read: if isAuthenticated();
+    }
+
+    // ============================================
+    // Children Collection
+    // ============================================
+    match /children/{childId} {
+      // Admin: full access
+      allow read, write: if isAdmin();
+      // Servants: read/write only their class
+      allow read, write: if isServant() &&
+        resource.data.classId == getUserClassId();
+      // Servants can create children in their class
+      allow create: if isServant() &&
+        request.resource.data.classId == getUserClassId();
+      // Children: read own data
+      allow read: if isChild() && request.auth.uid == childId;
+      // Parents: read their linked child
+      allow read: if isParent() &&
+        resource.data.parentUid == request.auth.uid;
+    }
+
+    // ============================================
+    // Attendance Collection
+    // ============================================
+    match /attendance/{recordId} {
+      // Admin: full access
+      allow read, write: if isAdmin();
+      // Servants: read/write only their class
+      allow read, write: if isServant() &&
+        resource.data.classId == getUserClassId();
+      allow create: if isServant() &&
+        request.resource.data.classId == getUserClassId();
+      // Children: read own attendance
+      allow read: if isChild() &&
+        resource.data.childUid == request.auth.uid;
+      // Parents: read child's attendance
+      allow read: if isParent() &&
+        resource.data.childUid ==
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedChildUid;
+    }
+
+    // ============================================
+    // Absence Excuses Collection
+    // ============================================
+    match /absence_excuses/{excuseId} {
+      // Admin: full access
+      allow read, write: if isAdmin();
+      // Servants: read excuses for their class only
+      allow read: if isServant() &&
+        resource.data.classId == getUserClassId();
+      // Servants can acknowledge excuses in their class
+      allow update: if isServant() &&
+        resource.data.classId == getUserClassId() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acknowledgedBy', 'acknowledgedAt']);
+      // Parents: create excuses for their own child, read own excuses
+      allow create: if isParent() &&
+        request.resource.data.parentUid == request.auth.uid;
+      allow read: if isParent() &&
+        resource.data.parentUid == request.auth.uid;
+    }
+
+    // ============================================
+    // Verses Collection
+    // ============================================
+    match /verses/{verseId} {
+      allow read, write: if isAdmin();
+      allow read, write: if isServant() &&
+        resource.data.classId == getUserClassId();
+      allow create: if isServant() &&
+        request.resource.data.classId == getUserClassId();
+      allow read: if isChild() &&
+        resource.data.childUid == request.auth.uid;
+    }
+
+    // ============================================
+    // Quizzes Collection
+    // ============================================
+    match /quizzes/{quizId} {
+      allow read, write: if isAdmin();
+      allow read, write: if isServant() &&
+        resource.data.classId == getUserClassId();
+      allow create: if isServant() &&
+        request.resource.data.classId == getUserClassId();
+      allow read: if isChild() &&
+        resource.data.classId ==
+          get(/databases/$(database)/documents/children/$(request.auth.uid)).data.classId;
+    }
+
+    // ============================================
+    // News Collection
+    // ============================================
+    match /news/{newsId} {
+      // Everyone can read news
+      allow read: if true;
+      // Servants and admin can create/edit
+      allow write: if isAdmin() || isServant();
+    }
+
+    // ============================================
+    // Trips Collection
+    // ============================================
+    match /trips/{tripId} {
+      // Everyone can read trips
+      allow read: if true;
+      // Servants and admin can create/edit
+      allow write: if isAdmin() || isServant();
+    }
+  }
+}

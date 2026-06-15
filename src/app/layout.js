@@ -1,5 +1,5 @@
 import './globals.css';
-import { AuthProvider } from '@/lib/auth';
+import Providers from '@/components/Providers';
 
 export const metadata = {
   title: 'MSM Kids — خدمة ماري مرقس ابتدائي بنين',
@@ -23,11 +23,10 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/images/logo.jpg" />
       </head>
       <body>
-        <AuthProvider>
+        <Providers>
           {children}
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
 }
-

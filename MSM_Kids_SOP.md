@@ -3,8 +3,9 @@
 
 **Organization:** St. Mark's Coptic Orthodox Diocese of Qena
 **Service:** St. Mark Primary Boys Service (Khidmet Mary Marcos Ebtidaey Baneen)
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Status:** Draft
+**Last Updated:** June 2026
 
 ---
 
@@ -144,6 +145,8 @@ MSM Kids is a web-based platform designed to serve as the digital home for St. M
 └─────────────────────────────────────────────────────────────┘
 ```
 
+> **Note:** Firestore Security Rules enforce all role-based access control at the database level, ensuring class-scoped data isolation without custom server logic.
+
 ---
 
 ## 5. User Roles & Permissions
@@ -152,23 +155,50 @@ MSM Kids is a web-based platform designed to serve as the digital home for St. M
 
 | Role | Description |
 |------|-------------|
-| **Child** | Primary end-user; accesses personal profile, lessons, quizzes, and points |
-| **Parent** | Read-only view of their child's attendance, points, and service notifications |
-| **Servant** | Manages assigned class; records attendance, adds points, uploads content |
-| **Admin** | Full access to all classes, servants, statistics, and system settings |
+| **Child** | Primary end-user; accesses personal profile, lessons, quizzes, and points. View-only access to own data. |
+| **Parent** | Read-only view of their linked child's attendance, points, and notifications. Can submit absence excuses for upcoming sessions. |
+| **Servant** | Manages ONLY their assigned class. Can view/manage children in their class, record attendance, manage points, and create accounts for children without one. Cannot access any other class. |
+| **Admin** | Full access to all classes, all servants, all children, statistics, and system settings. Assigns servants to classes and controls all class configurations. |
 
-### 5.2 Permission Matrix
+### 5.2 Class-Based Access Model
+
+The core access model is **class-scoped**. Each servant is assigned to exactly one class by the Admin. All servant actions are strictly bounded to that class:
+
+- A servant **CANNOT** view, modify, or interact with children in another class.
+- A servant **CANNOT** create or modify other servants' accounts.
+- A servant **CAN** create child accounts within their own class for children who do not yet have accounts.
+- Only the **Admin** has cross-class visibility and control.
+
+> This is enforced at the **Firestore Security Rules** level, not just the UI level.
+
+### 5.3 Permission Matrix
 
 | Feature | Child | Parent | Servant | Admin |
 |---------|-------|--------|---------|-------|
 | View own profile | ✅ | ✅ | ✅ | ✅ |
-| Record attendance | ❌ | ❌ | ✅ | ✅ |
-| Add/modify points | ❌ | ❌ | ✅ | ✅ |
-| View all children | ❌ | ❌ | ✅ (class only) | ✅ |
-| Publish news/trips | ❌ | ❌ | ✅ | ✅ |
-| Manage servants | ❌ | ❌ | ❌ | ✅ |
-| View statistics dashboard | ❌ | ❌ | ✅ (partial) | ✅ |
-| System configuration | ❌ | ❌ | ❌ | ✅ |
+| View own child's data | — | ✅ | — | — |
+| Submit absence excuse | — | ✅ | — | — |
+| View children in assigned class | — | — | ✅ (class only) | ✅ (all) |
+| Record attendance | — | — | ✅ (class only) | ✅ |
+| Add/modify points | — | — | ✅ (class only) | ✅ |
+| Create child accounts | — | — | ✅ (class only) | ✅ |
+| Publish news / trips | — | — | ✅ | ✅ |
+| View class reports | — | — | ✅ (class only) | ✅ (all) |
+| View absence excuses | — | — | ✅ (class only) | ✅ (all) |
+| Manage servants | — | — | — | ✅ |
+| Assign servant to class | — | — | — | ✅ |
+| View statistics dashboard | — | — | Partial | ✅ |
+| System configuration | — | — | — | ✅ |
+
+### 5.4 Servant Account Creation Flow
+
+When a child in a servant's class does not yet have a platform account, the servant (not the admin) can create one:
+
+1. Servant navigates to their class children list.
+2. Servant clicks **"Add Child"** and enters the child's name, grade (pre-filled to their class), and parent contact.
+3. System creates a child account linked to the servant's `classId`.
+4. An optional parent account can be linked at creation time or later by the Admin.
+5. The servant **cannot** create accounts outside their assigned class.
 
 ---
 
@@ -178,15 +208,12 @@ MSM Kids is a web-based platform designed to serve as the digital home for St. M
 
 Each child account contains:
 
-- Full name
-- Grade/class
+- Full name and grade/class
 - Profile avatar (cartoon-style, selectable)
-- Total points
-- Current level (e.g., Beginner → Explorer → Champion → Star)
+- Total points and current level (Beginner → Explorer → Champion → Star)
 - Attendance record (weekly/monthly)
 - Memorized verses log
-- Completed assignments
-- Earned badges
+- Completed assignments and earned badges
 
 ### 6.2 Gamification System
 
@@ -200,57 +227,67 @@ Each child account contains:
 
 ### 6.3 Attendance Module
 
-- Servant marks attendance per session per child
-- System records date, class, and servant who recorded
-- Parent receives notification (future phase)
-- Admin views aggregate weekly/monthly attendance stats
+- Servant marks attendance per session per child in their class only.
+- System records date, class, and servant who recorded.
+- Absence excuses submitted by parents are visible to the servant and admin.
+- Admin views aggregate weekly/monthly attendance stats across all classes.
 
-### 6.4 Verse Memorization Module
+### 6.4 Absence Excuse System *(New)*
 
-- Servant assigns weekly verse
-- Child marks verse as memorized
-- Servant verifies and awards points
-- History log per child
+Parents can submit an advance absence excuse if their child will not attend an upcoming session:
 
-### 6.5 Quiz Module
+1. Parent logs in and navigates to **"Excuse Absence"** on their dashboard.
+2. Parent selects the upcoming session date and writes the reason.
+3. Excuse is saved to Firestore under the child's record with `status: pending`.
+4. The servant of that child's class sees the excuse flagged in their attendance panel.
+5. Admin can view all excuses across all classes.
+6. Excuse can only be submitted for a **future** session (not retroactively).
 
-- Multiple choice or short answer quizzes
-- Created by servant or admin
-- Auto-graded for MCQ format
-- Results contribute to points
+**Excuse statuses:** `pending` | `acknowledged` | `rejected`
 
-### 6.6 News & Announcements
+### 6.5 Verse Memorization Module
 
-- Published by servants or admin
-- Appears on public home page and child/parent dashboard
-- Supports images and text
+- Servant assigns weekly verse to their class.
+- Child marks verse as memorized.
+- Servant verifies and awards points.
+- History log maintained per child.
 
-### 6.7 Trips Module
+### 6.6 Quiz Module
+
+- Multiple choice or short answer quizzes.
+- Created by servant (for their class) or admin (any class).
+- Auto-graded for MCQ format.
+- Results contribute to points.
+
+### 6.7 News & Announcements
+
+- Published by servants or admin.
+- Appears on public home page and child/parent dashboard.
+- Supports images and text.
+
+### 6.8 Trips Module
 
 Each trip entry contains:
 
-- Trip name and description
-- Date and location
-- Price
+- Trip name, description, date, and location
+- Price and registration deadline
 - Registration form (name, parent phone, grade)
 - Photo gallery (post-trip)
-- Registration deadline
 
-### 6.8 Educational Content
+### 6.9 Educational Content
 
 - PDF lesson uploads
 - Short video links (YouTube embed)
 - Organized by grade and subject
 - Searchable content library
 
-### 6.9 Admin Dashboard
+### 6.10 Admin Dashboard
 
-- Total children count
-- Active servants
-- Weekly attendance rate
-- Top-performing children
+- Total children count and active servants per class
+- Weekly attendance rate by class
+- Top-performing children across all classes
 - Recent activity log
-- Manage servant accounts
+- Manage servant accounts and class assignments
 - Export reports (CSV)
 
 ---
@@ -284,29 +321,33 @@ Each trip entry contains:
 
 ```
 /parent/dashboard   → Child Overview (attendance, points, notifications)
+/parent/excuse      → Submit Absence Excuse for Upcoming Session
 ```
 
 ### 7.4 Servant Pages (Login Required — Servant Role)
 
 ```
-/servant/dashboard  → Class Overview
-/servant/children   → Manage Children (attendance, points)
+/servant/dashboard  → My Class Overview (class-scoped only)
+/servant/children   → My Class Children (view, manage, create accounts)
+/servant/attendance → Record & View Attendance (class only)
 /servant/content    → Upload Lessons & Materials
 /servant/news       → Post News & Announcements
 /servant/trips      → Manage Trip Registrations
-/servant/quizzes    → Create & Manage Quizzes
-/servant/reports    → Class Reports
+/servant/quizzes    → Create & Manage Quizzes (class only)
+/servant/reports    → Class Reports (class only)
+/servant/excuses    → View Parent Absence Excuses (class only)
 ```
 
 ### 7.5 Admin Pages (Login Required — Admin Role)
 
 ```
-/admin/dashboard    → Full Statistics Overview
+/admin/dashboard    → Full Statistics Overview (all classes)
 /admin/children     → All Children Management
 /admin/servants     → Servant Accounts Management
-/admin/classes      → Class Configuration
+/admin/classes      → Class Configuration & Servant Assignment
 /admin/settings     → System Settings
 /admin/reports      → Full Reports & Exports
+/admin/excuses      → All Absence Excuses (all classes)
 ```
 
 ---
@@ -316,101 +357,146 @@ Each trip entry contains:
 ### 8.1 Collections (Firestore)
 
 #### `users`
-```
+```json
 {
-  uid: string,
-  name: string,
-  role: "child" | "parent" | "servant" | "admin",
-  email: string,
-  phone: string,
-  createdAt: timestamp
+  "uid": "string",
+  "name": "string",
+  "role": "child | parent | servant | admin",
+  "email": "string",
+  "phone": "string",
+  "createdAt": "timestamp"
+}
+```
+
+#### `classes` *(New)*
+> Core collection — foundation of class-scoped access control.
+
+```json
+{
+  "id": "string",
+  "name": "string",
+  "grade": "string",
+  "servantUid": "string",
+  "createdAt": "timestamp"
 }
 ```
 
 #### `children`
-```
+```json
 {
-  uid: string,
-  name: string,
-  grade: string,
-  parentUid: string,
-  servantUid: string,
-  avatarId: string,
-  points: number,
-  level: string,
-  createdAt: timestamp
+  "uid": "string",
+  "name": "string",
+  "grade": "string",
+  "classId": "string",
+  "parentUid": "string | null",
+  "servantUid": "string",
+  "createdBy": "string",
+  "avatarId": "string",
+  "points": "number",
+  "level": "string",
+  "createdAt": "timestamp"
 }
 ```
 
 #### `attendance`
-```
+```json
 {
-  childUid: string,
-  date: timestamp,
-  present: boolean,
-  recordedBy: string (servantUid),
-  sessionId: string
+  "id": "string",
+  "childUid": "string",
+  "classId": "string",
+  "date": "timestamp",
+  "present": "boolean",
+  "excuseId": "string | null",
+  "recordedBy": "string (servantUid)",
+  "sessionId": "string"
+}
+```
+
+#### `absence_excuses` *(New)*
+```json
+{
+  "id": "string",
+  "childUid": "string",
+  "classId": "string",
+  "parentUid": "string",
+  "sessionDate": "timestamp",
+  "reason": "string",
+  "status": "pending | acknowledged | rejected",
+  "submittedAt": "timestamp",
+  "acknowledgedBy": "string | null",
+  "acknowledgedAt": "timestamp | null"
 }
 ```
 
 #### `verses`
-```
+```json
 {
-  childUid: string,
-  verseText: string,
-  reference: string,
-  assignedDate: timestamp,
-  memorizedDate: timestamp | null,
-  verifiedBy: string (servantUid),
-  pointsAwarded: number
+  "childUid": "string",
+  "classId": "string",
+  "verseText": "string",
+  "reference": "string",
+  "assignedDate": "timestamp",
+  "memorizedDate": "timestamp | null",
+  "verifiedBy": "string (servantUid)",
+  "pointsAwarded": "number"
 }
 ```
 
 #### `quizzes`
-```
+```json
 {
-  id: string,
-  title: string,
-  grade: string,
-  createdBy: string (servantUid),
-  questions: [
+  "id": "string",
+  "title": "string",
+  "classId": "string",
+  "grade": "string",
+  "createdBy": "string (servantUid | adminUid)",
+  "questions": [
     {
-      text: string,
-      options: string[],
-      correctIndex: number
+      "text": "string",
+      "options": "string[]",
+      "correctIndex": "number"
     }
   ],
-  dueDate: timestamp,
-  pointValue: number
+  "dueDate": "timestamp",
+  "pointValue": "number"
 }
 ```
 
 #### `trips`
-```
+```json
 {
-  id: string,
-  title: string,
-  description: string,
-  date: timestamp,
-  location: string,
-  price: number,
-  registrationDeadline: timestamp,
-  photos: string[],
-  createdBy: string (servantUid)
+  "id": "string",
+  "title": "string",
+  "description": "string",
+  "date": "timestamp",
+  "location": "string",
+  "price": "number",
+  "registrationDeadline": "timestamp",
+  "photos": "string[]",
+  "createdBy": "string (servantUid | adminUid)"
 }
 ```
 
 #### `news`
-```
+```json
 {
-  id: string,
-  title: string,
-  body: string,
-  imageUrl: string | null,
-  publishedAt: timestamp,
-  publishedBy: string (servantUid | adminUid)
+  "id": "string",
+  "title": "string",
+  "body": "string",
+  "imageUrl": "string | null",
+  "publishedAt": "timestamp",
+  "publishedBy": "string (servantUid | adminUid)"
 }
 ```
+
+### 8.2 Firestore Security Rules (Key Principles)
+
+- Servants can only read/write documents where `classId == their assigned class`.
+- Parents can only read documents where `childUid == their linked child`.
+- Parents can only write to `absence_excuses` where `parentUid == their own uid`.
+- Children can only read their own documents (`uid == their own uid`).
+- Admins have full read/write access to all collections.
+- The `classes` collection is write-restricted to admin only.
 
 ---
 
@@ -422,25 +508,27 @@ Each trip entry contains:
 - [ ] Configure authentication (all 4 roles)
 - [ ] Build public pages (Home, About, Contact)
 - [ ] Design system: colors, typography, components
-- [ ] Child profile page (basic)
+- [ ] Configure Firestore Security Rules for class-scoped access
+- [ ] Build `classes` collection and servant assignment flow (Admin)
 
-### Phase 2 — Core Admin Features (Weeks 4–6)
+### Phase 2 — Core Admin & Servant Features (Weeks 4–6)
 
-- [ ] Servant dashboard
-- [ ] Attendance recording system
-- [ ] Points management
-- [ ] Admin dashboard with statistics
-- [ ] Children management CRUD
+- [ ] Admin dashboard with class management
+- [ ] Servant dashboard (class-scoped only)
+- [ ] Attendance recording system with class isolation
+- [ ] Servant-initiated child account creation
+- [ ] Points management (class-scoped)
 
 ### Phase 3 — Engagement Features (Weeks 7–9)
 
-- [ ] Gamification: levels, badges, leaderboard
+- [ ] Gamification: levels, badges, leaderboard (per class)
 - [ ] Verse memorization module
-- [ ] Quiz system
+- [ ] Quiz system (class-scoped creation)
 - [ ] Weekly challenges
 
 ### Phase 4 — Content & Communication (Weeks 10–12)
 
+- [ ] Absence Excuse system (parent submission + servant/admin view)
 - [ ] News and announcements module
 - [ ] Trips module with registration
 - [ ] Educational content upload (PDF/video)
@@ -448,10 +536,10 @@ Each trip entry contains:
 
 ### Phase 5 — Polish & Launch (Weeks 13–14)
 
-- [ ] Parent portal
+- [ ] Parent portal with excuse submission
 - [ ] Mobile responsiveness QA
 - [ ] Performance optimization
-- [ ] Final testing across all roles
+- [ ] Final testing across all roles (especially class isolation)
 - [ ] Launch on Firebase Hosting
 
 ---
@@ -521,7 +609,8 @@ Local Development → GitHub Repository → Firebase Hosting (auto-deploy on pus
 
 - Children's data is stored securely in Firebase and is never shared externally.
 - Parents must provide consent during child registration.
-- Only servants assigned to a class can view that class's children.
+- Only servants assigned to a class can view that class's children (enforced via Firestore rules).
+- Absence excuses are visible only to the child's class servant and admins.
 - Admin retains full audit log access.
 
 ### 12.4 Backup Policy
@@ -539,4 +628,4 @@ Local Development → GitHub Repository → Firebase Hosting (auto-deploy on pus
 ---
 
 *Document prepared for: St. Mark Primary Boys Service, Diocese of Qena, Coptic Orthodox Church.*
-*Last Updated: 2026*
+*Version 1.1 — Updated June 2026*

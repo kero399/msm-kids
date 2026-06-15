@@ -61,6 +61,11 @@ const activities = [
 export default function ActivitiesPage() {
   const [activeFilter, setActiveFilter] = useState('الكل');
 
+  const filteredActivities =
+    activeFilter === 'الكل'
+      ? activities
+      : activities.filter((a) => a.category === activeFilter);
+
   return (
     <>
       <Header />
@@ -132,7 +137,7 @@ export default function ActivitiesPage() {
 
           {/* Activities Grid */}
           <div className="activities-grid">
-            {activities.map((activity, index) => (
+            {filteredActivities.map((activity, index) => (
               <motion.div
                 key={activity.id}
                 className="card activity-card"

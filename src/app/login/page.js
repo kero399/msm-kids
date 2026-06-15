@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
+import { useAuth, getDashboardPath } from '@/lib/auth';
+import { useToast } from '@/components/ui/Toast';
 
 const roles = [
   { id: 'child', icon: '👦', label: 'طفل' },
@@ -19,15 +21,34 @@ export default function LoginPage() {
     username: '',
     password: '',
   });
+  const [loading, setLoading] = useState(false);
+  const { login, isFirebaseMode } = useAuth();
+  const { showToast } = useToast();
+  const router = useRouter();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentials((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(`جارٍ تسجيل الدخول كـ ${roles.find((r) => r.id === selectedRole)?.label}... 🔐`);
+    if (!selectedRole) {
+      showToast('الرجاء اختيار نوع الحساب', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = await login(credentials.username, credentials.password, selectedRole);
+      showToast(`مرحباً ${user.displayName}! 🎉`, 'success');
+      // Redirect based on role
+      const dashboardPath = getDashboardPath(user.role);
+      router.push(dashboardPath);
+    } catch (err) {
+      showToast(err.message || 'حدث خطأ أثناء تسجيل الدخول', 'error');
+    }
+    setLoading(false);
   };
 
   return (
@@ -42,17 +63,26 @@ export default function LoginPage() {
           transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
         >
           {/* Logo */}
-          <Image
+          <img
             src="/images/logo.jpg"
             alt="شعار خدمة ماري مرقس"
-            width={100}
-            height={100}
             className="hero-logo"
           />
 
           {/* Title */}
           <h1>تسجيل الدخول</h1>
           <p>اختر نوع الحساب للدخول</p>
+
+          {/* Dev mode indicator */}
+          {!isFirebaseMode && (
+            <div style={{
+              background: 'rgba(255,241,118,0.2)', border: '1px solid rgba(255,241,118,0.4)',
+              borderRadius: 'var(--radius-md)', padding: '0.5rem 1rem', marginBottom: '1rem',
+              fontSize: '0.8rem', color: '#B8860B',
+            }}>
+              🔧 وضع التطوير — الدخول بدون كلمة مرور
+            </div>
+          )}
 
           {/* Role Selection */}
           <div className="login-roles">
@@ -88,7 +118,7 @@ export default function LoginPage() {
                     name="username"
                     value={credentials.username}
                     onChange={handleChange}
-                    required
+                    required={isFirebaseMode}
                   />
                 </div>
 
@@ -100,7 +130,7 @@ export default function LoginPage() {
                     name="password"
                     value={credentials.password}
                     onChange={handleChange}
-                    required
+                    required={isFirebaseMode}
                   />
                 </div>
 
@@ -117,8 +147,8 @@ export default function LoginPage() {
                   </a>
                 </p>
 
-                <button type="submit" className="btn btn-primary">
-                  دخول
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'جارٍ الدخول...' : 'دخول'}
                 </button>
               </motion.form>
             )}
