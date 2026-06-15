@@ -8,6 +8,7 @@ const adminNavItems = [
   { href: '/admin/classes', icon: '🏫', label: 'إدارة الفصول' },
   { href: '/admin/servants', icon: '🙏', label: 'إدارة الخدّام' },
   { href: '/admin/children', icon: '👦', label: 'إدارة الأطفال' },
+  { href: '/admin/excuses', icon: '📝', label: 'أعذار الغياب' },
   { href: '/admin/reports', icon: '📋', label: 'التقارير' },
   { href: '/admin/settings', icon: '⚙️', label: 'الإعدادات' },
 ];

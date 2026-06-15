@@ -7,6 +7,7 @@ const servantNavItems = [
   { href: '/servant/dashboard', icon: '📊', label: 'لوحة التحكم' },
   { href: '/servant/children', icon: '👦', label: 'أطفال فصلي' },
   { href: '/servant/attendance', icon: '✅', label: 'تسجيل الحضور' },
+  { href: '/servant/excuses', icon: '📝', label: 'أعذار الغياب' },
   { href: '/servant/reports', icon: '📋', label: 'التقارير' },
 ];
 

@@ -8,6 +8,8 @@ import {
   getClasses, getChildrenByClass, getAllChildren,
   getAttendanceByClass, getDashboardStats, getClassStats,
   getServants, getActivityLog,
+  getAbsenceExcusesByClass, getAbsenceExcusesByChild, getAllAbsenceExcuses,
+  getVersesByChild, getQuizzesByClass, getLessonsByClass,
 } from './firestore';
 
 /**
@@ -184,3 +186,106 @@ export function useActivityLog() {
 
   return { logs, loading, refresh };
 }
+
+/**
+ * useExcuses — fetches excuses, optionally filtered by classId or childUid
+ */
+export function useExcuses(classId = null, childUid = null) {
+  const [excuses, setExcuses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      let data = [];
+      if (childUid) {
+        data = await getAbsenceExcusesByChild(childUid);
+      } else if (classId) {
+        data = await getAbsenceExcusesByClass(classId);
+      } else {
+        data = await getAllAbsenceExcuses();
+      }
+      setExcuses(data);
+    } catch (err) {
+      console.error('useExcuses error:', err);
+    }
+    setLoading(false);
+  }, [classId, childUid]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { excuses, loading, refresh };
+}
+
+/**
+ * useVerses — fetches verses for a child
+ */
+export function useVerses(childUid) {
+  const [verses, setVerses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!childUid) return;
+    setLoading(true);
+    try {
+      const data = await getVersesByChild(childUid);
+      setVerses(data);
+    } catch (err) {
+      console.error('useVerses error:', err);
+    }
+    setLoading(false);
+  }, [childUid]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { verses, loading, refresh };
+}
+
+/**
+ * useQuizzes — fetches quizzes for a class
+ */
+export function useQuizzes(classId) {
+  const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!classId) return;
+    setLoading(true);
+    try {
+      const data = await getQuizzesByClass(classId);
+      setQuizzes(data);
+    } catch (err) {
+      console.error('useQuizzes error:', err);
+    }
+    setLoading(false);
+  }, [classId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { quizzes, loading, refresh };
+}
+
+/**
+ * useLessons — fetches lessons for a class
+ */
+export function useLessons(classId) {
+  const [lessons, setLessons] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!classId) return;
+    setLoading(true);
+    try {
+      const data = await getLessonsByClass(classId);
+      setLessons(data);
+    } catch (err) {
+      console.error('useLessons error:', err);
+    }
+    setLoading(false);
+  }, [classId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { lessons, loading, refresh };
+}
+

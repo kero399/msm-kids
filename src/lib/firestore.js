@@ -44,6 +44,36 @@ const mockStore = {
     { id: 'log-003', action: 'إنشاء حساب طفل', details: 'فيلوباتير جمال — الصف الأول', user: 'مينا ألبير', timestamp: new Date(Date.now() - 86400000) },
     { id: 'log-004', action: 'إنشاء فصل', details: 'الصف الثالث — ثالثة ابتدائي', user: 'أ. فادي شكري', timestamp: new Date(Date.now() - 172800000) },
   ],
+  absence_excuses: [
+    { id: 'excuse-001', childUid: 'mock-child-001', childName: 'كيرلس رفعت', classId: 'class-001', parentUid: 'mock-parent-001', sessionDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0], reason: 'ظروف عائلية والسفر خارج المدينة', status: 'pending', submittedAt: new Date() },
+  ],
+  verses: [
+    { id: 'verse-001', childUid: 'mock-child-001', classId: 'class-001', verseText: 'أَنَا هُوَ النُّورُ الْحَقِيقِيُّ الَّذِي يُنِيرُ كُلَّ إِنْسَانٍ', reference: 'يوحنا ١: ٩', assignedDate: new Date(Date.now() - 86400000 * 5), memorizedDate: new Date(Date.now() - 86400000 * 2), verifiedBy: 'mock-servant-001', pointsAwarded: 20 },
+    { id: 'verse-002', childUid: 'mock-child-001', classId: 'class-001', verseText: 'تَعَالَوْا إِلَيَّ يَا جَمِيعَ الْمُتْعَبِينَ وَالثَّقِيلِي الأَحْمَالِ، وَأَنَا أُرِيحُكُمْ.', reference: 'متى ١١: ٢٨', assignedDate: new Date(Date.now() - 86400000 * 1), memorizedDate: null, verifiedBy: null, pointsAwarded: 20 },
+  ],
+  quizzes: [
+    {
+      id: 'quiz-001',
+      title: 'مسابقة حياة القديس مارمرقس الرسول',
+      classId: 'class-001',
+      grade: 'أولى ابتدائي',
+      createdBy: 'mock-servant-001',
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+      pointValue: 30,
+      questions: [
+        { text: 'أين ولد القديس مارمرقس؟', options: ['القدس', 'القيروان (ليبيا)', 'الإسكندرية', 'روما'], correctIndex: 1 },
+        { text: 'ما هو رمز القديس مارمرقس؟', options: ['الحمل', 'النسر', 'الثور', 'الأسد'], correctIndex: 3 },
+        { text: 'مارمرقس هو كاتب إنجيل...', options: ['متى', 'مرقس', 'لوقا', 'يوحنا'], correctIndex: 1 },
+      ],
+      submissions: {
+        'mock-child-002': { score: 100, pointsEarned: 30, submittedAt: new Date() }
+      }
+    }
+  ],
+  lessons: [
+    { id: 'lesson-001', title: 'درس القديس مارمرقس كاروز ديارنا المصرية', classId: 'class-001', date: '2026-06-12', description: 'نتعلم اليوم عن حياة القديس مارمرقس وكيف أحضر الإيمان المسيحي إلى مصر واستشهاده في الإسكندرية.', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', fileUrl: '/files/st-mark-lesson.pdf', publishedBy: 'mock-servant-001' },
+    { id: 'lesson-002', title: 'درس المحبة والعطاء من قصة السامري الصالح', classId: 'class-001', date: '2026-06-05', description: 'قصة السامري الصالح وكيف نساعد كل إنسان محتاج بغض النظر عن جنسه أو دينه.', videoUrl: null, fileUrl: null, publishedBy: 'mock-servant-001' },
+  ],
 };
 
 // Helper: generate unique ID
@@ -375,3 +405,155 @@ export async function getActivityLog() {
   // In production, query from a 'activity_log' collection
   return [];
 }
+
+// ============================================
+// Absence Excuses
+// ============================================
+export async function submitAbsenceExcuse({ parentUid, childUid, childName, classId, sessionDate, reason }) {
+  if (isFirebaseConfigured && db) {
+    const { collection, addDoc, serverTimestamp } = require('firebase/firestore');
+    const docRef = await addDoc(collection(db, 'absence_excuses'), {
+      parentUid, childUid, childName, classId, sessionDate, reason,
+      status: 'pending', submittedAt: serverTimestamp(),
+      acknowledgedBy: null, acknowledgedAt: null
+    });
+    return { id: docRef.id, parentUid, childUid, childName, classId, sessionDate, reason, status: 'pending' };
+  }
+  const newExcuse = {
+    id: generateId('excuse'), parentUid, childUid, childName, classId,
+    sessionDate, reason, status: 'pending', submittedAt: new Date()
+  };
+  mockStore.absence_excuses.push(newExcuse);
+  return newExcuse;
+}
+
+export async function getAbsenceExcusesByClass(classId) {
+  if (isFirebaseConfigured && db) {
+    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
+    const q = query(
+      collection(db, 'absence_excuses'),
+      where('classId', '==', classId),
+      orderBy('sessionDate', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return mockStore.absence_excuses
+    .filter((e) => e.classId === classId)
+    .sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
+}
+
+export async function getAbsenceExcusesByChild(childUid) {
+  if (isFirebaseConfigured && db) {
+    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
+    const q = query(
+      collection(db, 'absence_excuses'),
+      where('childUid', '==', childUid),
+      orderBy('sessionDate', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return mockStore.absence_excuses
+    .filter((e) => e.childUid === childUid)
+    .sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
+}
+
+export async function getAllAbsenceExcuses() {
+  if (isFirebaseConfigured && db) {
+    const { collection, getDocs, query, orderBy } = require('firebase/firestore');
+    const q = query(collection(db, 'absence_excuses'), orderBy('sessionDate', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return [...mockStore.absence_excuses].sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
+}
+
+export async function updateExcuseStatus(excuseId, status, acknowledgedBy) {
+  // status = 'acknowledged' | 'rejected'
+  if (isFirebaseConfigured && db) {
+    const { doc, updateDoc, serverTimestamp } = require('firebase/firestore');
+    await updateDoc(doc(db, 'absence_excuses', excuseId), {
+      status, acknowledgedBy, acknowledgedAt: serverTimestamp()
+    });
+    return;
+  }
+  const excuse = mockStore.absence_excuses.find((e) => e.id === excuseId);
+  if (excuse) {
+    excuse.status = status;
+    excuse.acknowledgedBy = acknowledgedBy;
+    excuse.acknowledgedAt = new Date();
+  }
+}
+
+// ============================================
+// Verses
+// ============================================
+export async function getVersesByChild(childUid) {
+  if (isFirebaseConfigured && db) {
+    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
+    const q = query(
+      collection(db, 'verses'),
+      where('childUid', '==', childUid),
+      orderBy('assignedDate', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return mockStore.verses.filter((v) => v.childUid === childUid);
+}
+
+// ============================================
+// Quizzes
+// ============================================
+export async function getQuizzesByClass(classId) {
+  if (isFirebaseConfigured && db) {
+    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
+    const q = query(
+      collection(db, 'quizzes'),
+      where('classId', '==', classId),
+      orderBy('dueDate', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return mockStore.quizzes.filter((q) => q.classId === classId);
+}
+
+export async function submitQuizResponse(childUid, quizId, score, pointsEarned) {
+  if (isFirebaseConfigured && db) {
+    const { doc, updateDoc, serverTimestamp } = require('firebase/firestore');
+    // Save submission inside quiz doc or a submissions subcollection
+    const quizRef = doc(db, 'quizzes', quizId);
+    await updateDoc(quizRef, {
+      [`submissions.${childUid}`]: { score, pointsEarned, submittedAt: serverTimestamp() }
+    });
+    // Add child points
+    await updateChildPoints(childUid, pointsEarned);
+    return;
+  }
+  const quiz = mockStore.quizzes.find((q) => q.id === quizId);
+  if (quiz) {
+    if (!quiz.submissions) quiz.submissions = {};
+    quiz.submissions[childUid] = { score, pointsEarned, submittedAt: new Date() };
+    await updateChildPoints(childUid, pointsEarned);
+  }
+}
+
+// ============================================
+// Lessons
+// ============================================
+export async function getLessonsByClass(classId) {
+  if (isFirebaseConfigured && db) {
+    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
+    const q = query(
+      collection(db, 'lessons'),
+      where('classId', '==', classId),
+      orderBy('date', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return mockStore.lessons.filter((l) => l.classId === classId);
+}
+
