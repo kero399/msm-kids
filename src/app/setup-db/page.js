@@ -66,7 +66,7 @@ export default function SetupDatabasePage() {
     addLog('بدء تهيئة قاعدة البيانات...');
 
     try {
-      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+      const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = await import('firebase/auth');
       const { doc, setDoc, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
 
       // 1. Create Mock Admin Account
@@ -78,9 +78,10 @@ export default function SetupDatabasePage() {
         addLog(`تم إنشاء حساب المسؤول بنجاح: ${adminUid}`);
       } catch (authErr) {
         if (authErr.code === 'auth/email-already-in-use') {
-          addLog('حساب المسؤول موجود بالفعل، سيتم تحديث بيانات Firestore فقط.');
-          // Try signing in or finding UID (for safety we use placeholder or allow overwrite if config matches)
-          adminUid = 'existing-admin-uid';
+          addLog('حساب المسؤول موجود بالفعل. جاري تسجيل الدخول لاسترداد المعرف الفريد (UID)...');
+          const adminCred = await signInWithEmailAndPassword(auth, 'admin@msmkids.com', 'Admin@123456');
+          adminUid = adminCred.user.uid;
+          addLog(`تم استرداد المعرف الفريد للمسؤول بنجاح: ${adminUid}`);
         } else {
           throw authErr;
         }
@@ -103,8 +104,10 @@ export default function SetupDatabasePage() {
         addLog(`تم إنشاء حساب الخادم بنجاح: ${servantUid}`);
       } catch (authErr) {
         if (authErr.code === 'auth/email-already-in-use') {
-          addLog('حساب الخادم موجود بالفعل، سيتم تحديث بيانات Firestore فقط.');
-          servantUid = 'existing-servant-uid';
+          addLog('حساب الخادم موجود بالفعل. جاري تسجيل الدخول لاسترداد المعرف الفريد (UID)...');
+          const servantCred = await signInWithEmailAndPassword(auth, 'servant@msmkids.com', 'Servant@123456');
+          servantUid = servantCred.user.uid;
+          addLog(`تم استرداد المعرف الفريد للخادم بنجاح: ${servantUid}`);
         } else {
           throw authErr;
         }
@@ -130,8 +133,10 @@ export default function SetupDatabasePage() {
         addLog(`تم إنشاء حساب ولي الأمر بنجاح: ${parentUid}`);
       } catch (authErr) {
         if (authErr.code === 'auth/email-already-in-use') {
-          addLog('حساب ولي الأمر موجود بالفعل، سيتم تحديث بيانات Firestore.');
-          parentUid = 'existing-parent-uid';
+          addLog('حساب ولي الأمر موجود بالفعل. جاري تسجيل الدخول لاسترداد المعرف الفريد (UID)...');
+          const parentCred = await signInWithEmailAndPassword(auth, 'parent@msmkids.com', 'Parent@123456');
+          parentUid = parentCred.user.uid;
+          addLog(`تم استرداد المعرف الفريد لولي الأمر بنجاح: ${parentUid}`);
         } else {
           throw authErr;
         }
@@ -146,8 +151,10 @@ export default function SetupDatabasePage() {
         addLog(`تم إنشاء حساب الطفل بنجاح: ${childUid}`);
       } catch (authErr) {
         if (authErr.code === 'auth/email-already-in-use') {
-          addLog('حساب الطفل موجود بالفعل، سيتم تحديث بيانات Firestore.');
-          childUid = 'existing-child-uid';
+          addLog('حساب الطفل موجود بالفعل. جاري تسجيل الدخول لاسترداد المعرف الفريد (UID)...');
+          const childCred = await signInWithEmailAndPassword(auth, 'child@msmkids.com', 'Child@123456');
+          childUid = childCred.user.uid;
+          addLog(`تم استرداد المعرف الفريد للطفل بنجاح: ${childUid}`);
         } else {
           throw authErr;
         }
