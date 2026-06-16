@@ -3,6 +3,20 @@
 // Dual-mode: uses real Firestore when configured, mock data in dev mode
 
 import { isFirebaseConfigured, db } from './firebase';
+import {
+  collection,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  increment,
+  serverTimestamp,
+} from 'firebase/firestore';
 
 // ============================================
 // Mock Data Store (for development without Firebase)
@@ -48,8 +62,8 @@ const mockStore = {
     { id: 'excuse-001', childUid: 'mock-child-001', childName: 'كيرلس رفعت', classId: 'class-001', parentUid: 'mock-parent-001', sessionDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0], reason: 'ظروف عائلية والسفر خارج المدينة', status: 'pending', submittedAt: new Date() },
   ],
   verses: [
-    { id: 'verse-001', childUid: 'mock-child-001', classId: 'class-001', verseText: 'أَنَا هُوَ النُّورُ الْحَقِيقِيُّ الَّذِي يُنِيرُ كُلَّ إِنْسَانٍ', reference: 'يوحنا ١: ٩', assignedDate: new Date(Date.now() - 86400000 * 5), memorizedDate: new Date(Date.now() - 86400000 * 2), verifiedBy: 'mock-servant-001', pointsAwarded: 20 },
-    { id: 'verse-002', childUid: 'mock-child-001', classId: 'class-001', verseText: 'تَعَالَوْا إِلَيَّ يَا جَمِيعَ الْمُتْعَبِينَ وَالثَّقِيلِي الأَحْمَالِ، وَأَنَا أُرِيحُكُمْ.', reference: 'متى ١١: ٢٨', assignedDate: new Date(Date.now() - 86400000 * 1), memorizedDate: null, verifiedBy: null, pointsAwarded: 20 },
+    { id: 'verse-001', childUid: 'mock-child-001', classId: 'class-001', verseText: 'أَنَا هُوَ النُّورُ الْحَقِيقِيُّ الَّذِي يُنِيرُ كُلَّ إِنْسَانٍ', reference: 'يوحنا ١: ٩', assignedDate: new Date(Date.now() - 86400000 * 5), memorizedDate: new Date(Date.now() - 86400000 * 2), verifiedBy: 'mock-servant-001', pointsAwarded: 20 },
+    { id: 'verse-002', childUid: 'mock-child-001', classId: 'class-001', verseText: 'تَعَالَوْا إِلَيَّ يَا جَمِيعَ الْمُتْعَبِينَ وَالثَّقِيلِي الأَحْمَالِ، وَأَنَا أُرِيحُكُمْ.', reference: 'متى ١١: ٢٨', assignedDate: new Date(Date.now() - 86400000 * 1), memorizedDate: null, verifiedBy: null, pointsAwarded: 20 },
   ],
   quizzes: [
     {
@@ -87,7 +101,6 @@ function generateId(prefix = 'mock') {
 // ============================================
 export async function getClasses() {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, orderBy } = require('firebase/firestore');
     const q = query(collection(db, 'classes'), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -97,7 +110,6 @@ export async function getClasses() {
 
 export async function getClassById(classId) {
   if (isFirebaseConfigured && db) {
-    const { doc, getDoc } = require('firebase/firestore');
     const docSnap = await getDoc(doc(db, 'classes', classId));
     return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
   }
@@ -106,7 +118,6 @@ export async function getClassById(classId) {
 
 export async function createClass({ name, grade }) {
   if (isFirebaseConfigured && db) {
-    const { collection, addDoc, serverTimestamp } = require('firebase/firestore');
     const docRef = await addDoc(collection(db, 'classes'), {
       name, grade, servantUid: null, servantName: null, childCount: 0, createdAt: serverTimestamp(),
     });
@@ -119,7 +130,6 @@ export async function createClass({ name, grade }) {
 
 export async function updateClass(classId, data) {
   if (isFirebaseConfigured && db) {
-    const { doc, updateDoc } = require('firebase/firestore');
     await updateDoc(doc(db, 'classes', classId), data);
     return;
   }
@@ -129,7 +139,6 @@ export async function updateClass(classId, data) {
 
 export async function deleteClass(classId) {
   if (isFirebaseConfigured && db) {
-    const { doc, deleteDoc } = require('firebase/firestore');
     await deleteDoc(doc(db, 'classes', classId));
     return;
   }
@@ -161,7 +170,6 @@ export async function assignServantToClass(classId, servantUid, servantName) {
 // ============================================
 export async function getChildrenByClass(classId) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(collection(db, 'children'), where('classId', '==', classId), orderBy('name'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ uid: d.id, ...d.data() }));
@@ -171,7 +179,6 @@ export async function getChildrenByClass(classId) {
 
 export async function getAllChildren() {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, orderBy } = require('firebase/firestore');
     const q = query(collection(db, 'children'), orderBy('name'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ uid: d.id, ...d.data() }));
@@ -181,7 +188,6 @@ export async function getAllChildren() {
 
 export async function getChildById(childUid) {
   if (isFirebaseConfigured && db) {
-    const { doc, getDoc } = require('firebase/firestore');
     const docSnap = await getDoc(doc(db, 'children', childUid));
     return docSnap.exists() ? { uid: docSnap.id, ...docSnap.data() } : null;
   }
@@ -193,7 +199,6 @@ export async function createChild({ name, grade, classId, parentContact, servant
   const avatarId = avatars[Math.floor(Math.random() * avatars.length)];
 
   if (isFirebaseConfigured && db) {
-    const { collection, addDoc, serverTimestamp, doc, updateDoc, increment } = require('firebase/firestore');
     const docRef = await addDoc(collection(db, 'children'), {
       name, grade, classId, parentUid: null, servantUid, createdBy: servantUid,
       avatarId, points: 0, level: 'مبتدئ', parentContact: parentContact || '',
@@ -216,7 +221,6 @@ export async function createChild({ name, grade, classId, parentContact, servant
 
 export async function updateChildPoints(childUid, pointsDelta, reason = '') {
   if (isFirebaseConfigured && db) {
-    const { doc, updateDoc, increment } = require('firebase/firestore');
     await updateDoc(doc(db, 'children', childUid), { points: increment(pointsDelta) });
     // Recalculate level
     const child = await getChildById(childUid);
@@ -248,7 +252,6 @@ function calculateLevel(points) {
 export async function recordAttendance(classId, sessionDate, records, recordedBy) {
   // records = [{ childUid, present }]
   if (isFirebaseConfigured && db) {
-    const { collection, addDoc, serverTimestamp } = require('firebase/firestore');
     const sessionId = `session-${sessionDate}-${classId}`;
     const promises = records.map((r) =>
       addDoc(collection(db, 'attendance'), {
@@ -287,7 +290,6 @@ export async function recordAttendance(classId, sessionDate, records, recordedBy
 
 export async function getAttendanceByClass(classId, dateFrom, dateTo) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(
       collection(db, 'attendance'),
       where('classId', '==', classId),
@@ -303,7 +305,6 @@ export async function getAttendanceByClass(classId, dateFrom, dateTo) {
 
 export async function getAttendanceByChild(childUid) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(
       collection(db, 'attendance'),
       where('childUid', '==', childUid),
@@ -322,7 +323,6 @@ export async function getAttendanceByChild(childUid) {
 // ============================================
 export async function getServants() {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where } = require('firebase/firestore');
     const q = query(collection(db, 'users'), where('role', '==', 'servant'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ uid: d.id, ...d.data() }));
@@ -332,7 +332,6 @@ export async function getServants() {
 
 export async function createServant({ name, email, phone, classId }) {
   if (isFirebaseConfigured && db) {
-    const { collection, addDoc, serverTimestamp } = require('firebase/firestore');
     // Note: In production, you'd also create a Firebase Auth user
     const docRef = await addDoc(collection(db, 'users'), {
       name, email, phone, role: 'servant', classId: classId || null,
@@ -411,7 +410,6 @@ export async function getActivityLog() {
 // ============================================
 export async function submitAbsenceExcuse({ parentUid, childUid, childName, classId, sessionDate, reason }) {
   if (isFirebaseConfigured && db) {
-    const { collection, addDoc, serverTimestamp } = require('firebase/firestore');
     const docRef = await addDoc(collection(db, 'absence_excuses'), {
       parentUid, childUid, childName, classId, sessionDate, reason,
       status: 'pending', submittedAt: serverTimestamp(),
@@ -429,7 +427,6 @@ export async function submitAbsenceExcuse({ parentUid, childUid, childName, clas
 
 export async function getAbsenceExcusesByClass(classId) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(
       collection(db, 'absence_excuses'),
       where('classId', '==', classId),
@@ -445,7 +442,6 @@ export async function getAbsenceExcusesByClass(classId) {
 
 export async function getAbsenceExcusesByChild(childUid) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(
       collection(db, 'absence_excuses'),
       where('childUid', '==', childUid),
@@ -461,7 +457,6 @@ export async function getAbsenceExcusesByChild(childUid) {
 
 export async function getAllAbsenceExcuses() {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, orderBy } = require('firebase/firestore');
     const q = query(collection(db, 'absence_excuses'), orderBy('sessionDate', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -472,7 +467,6 @@ export async function getAllAbsenceExcuses() {
 export async function updateExcuseStatus(excuseId, status, acknowledgedBy) {
   // status = 'acknowledged' | 'rejected'
   if (isFirebaseConfigured && db) {
-    const { doc, updateDoc, serverTimestamp } = require('firebase/firestore');
     await updateDoc(doc(db, 'absence_excuses', excuseId), {
       status, acknowledgedBy, acknowledgedAt: serverTimestamp()
     });
@@ -491,7 +485,6 @@ export async function updateExcuseStatus(excuseId, status, acknowledgedBy) {
 // ============================================
 export async function getVersesByChild(childUid) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(
       collection(db, 'verses'),
       where('childUid', '==', childUid),
@@ -508,7 +501,6 @@ export async function getVersesByChild(childUid) {
 // ============================================
 export async function getQuizzesByClass(classId) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(
       collection(db, 'quizzes'),
       where('classId', '==', classId),
@@ -522,7 +514,6 @@ export async function getQuizzesByClass(classId) {
 
 export async function submitQuizResponse(childUid, quizId, score, pointsEarned) {
   if (isFirebaseConfigured && db) {
-    const { doc, updateDoc, serverTimestamp } = require('firebase/firestore');
     // Save submission inside quiz doc or a submissions subcollection
     const quizRef = doc(db, 'quizzes', quizId);
     await updateDoc(quizRef, {
@@ -545,7 +536,6 @@ export async function submitQuizResponse(childUid, quizId, score, pointsEarned) 
 // ============================================
 export async function getLessonsByClass(classId) {
   if (isFirebaseConfigured && db) {
-    const { collection, getDocs, query, where, orderBy } = require('firebase/firestore');
     const q = query(
       collection(db, 'lessons'),
       where('classId', '==', classId),
@@ -556,4 +546,3 @@ export async function getLessonsByClass(classId) {
   }
   return mockStore.lessons.filter((l) => l.classId === classId);
 }
-
