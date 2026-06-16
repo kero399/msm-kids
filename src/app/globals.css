@@ -2304,3 +2304,28 @@ img {
   }
 }
 
+.settings-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.settings-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.settings-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .settings-grid-2,
+  .settings-grid-3,
+  .settings-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+

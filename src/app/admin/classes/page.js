@@ -105,11 +105,29 @@ export default function AdminClassesPage() {
         </button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={classes}
-        loading={loading}
-        emptyState={
+      {/* Desktop view */}
+      <div className="hide-on-mobile">
+        <DataTable
+          columns={columns}
+          data={classes}
+          loading={loading}
+          emptyState={
+            <EmptyState
+              icon="🏫"
+              title="لا توجد فصول بعد"
+              description="ابدأ بإنشاء أول فصل للخدمة"
+              actionLabel="إضافة فصل"
+              onAction={() => setShowCreateModal(true)}
+            />
+          }
+        />
+      </div>
+
+      {/* Mobile view */}
+      <div className="show-on-mobile">
+        {loading ? (
+          <p style={{ textAlign: 'center', padding: '2rem' }}>جاري التحميل...</p>
+        ) : classes.length === 0 ? (
           <EmptyState
             icon="🏫"
             title="لا توجد فصول بعد"
@@ -117,8 +135,45 @@ export default function AdminClassesPage() {
             actionLabel="إضافة فصل"
             onAction={() => setShowCreateModal(true)}
           />
-        }
-      />
+        ) : (
+          <div className="mobile-card-list">
+            {classes.map((cls) => (
+              <div key={cls.id} className="mobile-card">
+                <div className="mobile-card-header">
+                  <span style={{ fontWeight: 'bold', color: 'var(--text-dark)', fontFamily: 'Cairo' }}>🏫 {cls.name}</span>
+                  <span className="badge badge-blue">{cls.grade}</span>
+                </div>
+                <div className="mobile-card-body" style={{ fontSize: '0.9rem', color: 'var(--text-light)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <div>الخادم المسؤول: {cls.servantName || <span style={{ fontStyle: 'italic' }}>غير معيّن</span>}</div>
+                  <div>عدد الأطفال: {cls.childCount || 0} طفل</div>
+                </div>
+                <div className="mobile-card-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button
+                    className="btn btn-primary"
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      setSelectedClassId(cls.id);
+                      setShowAssignModal(true);
+                    }}
+                  >
+                    تعيين خادم
+                  </button>
+                  <button
+                    className="btn"
+                    style={{
+                      padding: '0.35rem 0.75rem', fontSize: '0.8rem',
+                      background: 'rgba(252,129,129,0.1)', color: 'var(--danger)',
+                    }}
+                    onClick={() => handleDeleteClass(cls.id)}
+                  >
+                    حذف
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Create Class Modal */}
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="إنشاء فصل جديد">

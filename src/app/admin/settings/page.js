@@ -45,7 +45,7 @@ export default function AdminSettingsPage() {
               <input className="form-input" type="text" value={settings.serviceName}
                 onChange={(e) => handleChange('serviceName', e.target.value)} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="settings-grid-2">
               <div className="form-group">
                 <label className="form-label">أيام الخدمة</label>
                 <input className="form-input" type="text" value={settings.sessionDays}
@@ -66,7 +66,7 @@ export default function AdminSettingsPage() {
             <h3>إعدادات النقاط</h3>
           </div>
           <div className="dashboard-card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="settings-grid-3">
               <div className="form-group">
                 <label className="form-label">نقاط الحضور</label>
                 <input className="form-input" type="number" value={settings.attendancePoints}
@@ -92,7 +92,7 @@ export default function AdminSettingsPage() {
             <h3>حدود المستويات</h3>
           </div>
           <div className="dashboard-card-body">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+            <div className="settings-grid-4">
               <div className="form-group">
                 <label className="form-label">🌱 مبتدئ (من)</label>
                 <input className="form-input" type="number" value={settings.levelBeginner}

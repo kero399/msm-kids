@@ -40,28 +40,55 @@ export default function ServantReportsPage() {
           {sortedByPoints.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>لا توجد بيانات</p>
           ) : (
-            <div className="data-table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>الاسم</th>
-                    <th>النقاط</th>
-                    <th>المستوى</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              {/* Desktop view */}
+              <div className="hide-on-mobile">
+                <div className="data-table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>الاسم</th>
+                        <th>النقاط</th>
+                        <th>المستوى</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedByPoints.map((child, i) => (
+                        <tr key={child.uid}>
+                          <td>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
+                          <td style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{child.name}</td>
+                          <td><span className="points-badge">⭐ {child.points}</span></td>
+                          <td><span className="level-badge">{child.level}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile view */}
+              <div className="show-on-mobile">
+                <div className="mobile-card-list">
                   {sortedByPoints.map((child, i) => (
-                    <tr key={child.uid}>
-                      <td>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
-                      <td style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{child.name}</td>
-                      <td><span className="points-badge">⭐ {child.points}</span></td>
-                      <td><span className="level-badge">{child.level}</span></td>
-                    </tr>
+                    <div key={child.uid} className="mobile-card">
+                      <div className="mobile-card-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '1.25rem' }}>
+                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
+                          </span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-dark)', fontFamily: 'Cairo' }}>{child.name}</span>
+                        </div>
+                        <span className="level-badge">{child.level}</span>
+                      </div>
+                      <div className="mobile-card-footer" style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                        <span className="points-badge">⭐ {child.points} نقطة</span>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -75,32 +102,57 @@ export default function ServantReportsPage() {
           {sortedByAttendance.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>لا توجد بيانات</p>
           ) : (
-            <div className="data-table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>الاسم</th>
-                    <th>الجلسات</th>
-                    <th>حاضر</th>
-                    <th>نسبة الحضور</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <>
+              {/* Desktop view */}
+              <div className="hide-on-mobile">
+                <div className="data-table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>الاسم</th>
+                        <th>الجلسات</th>
+                        <th>حاضر</th>
+                        <th>نسبة الحضور</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedByAttendance.map((child) => (
+                        <tr key={child.uid}>
+                          <td style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{child.name}</td>
+                          <td>{child.totalSessions}</td>
+                          <td>{child.presentCount}</td>
+                          <td>
+                            <span className={`badge ${child.attendanceRate >= 75 ? 'badge-green' : child.attendanceRate >= 50 ? 'badge-yellow' : 'badge-blue'}`}>
+                              {child.attendanceRate}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile view */}
+              <div className="show-on-mobile">
+                <div className="mobile-card-list">
                   {sortedByAttendance.map((child) => (
-                    <tr key={child.uid}>
-                      <td style={{ fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{child.name}</td>
-                      <td>{child.totalSessions}</td>
-                      <td>{child.presentCount}</td>
-                      <td>
+                    <div key={child.uid} className="mobile-card">
+                      <div className="mobile-card-header">
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-dark)', fontFamily: 'Cairo' }}>👦 {child.name}</span>
                         <span className={`badge ${child.attendanceRate >= 75 ? 'badge-green' : child.attendanceRate >= 50 ? 'badge-yellow' : 'badge-blue'}`}>
-                          {child.attendanceRate}%
+                          {child.attendanceRate}% حضور
                         </span>
-                      </td>
-                    </tr>
+                      </div>
+                      <div className="mobile-card-body" style={{ fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                        <div>إجمالي الجلسات: {child.totalSessions}</div>
+                        <div>حاضر: {child.presentCount} مرة</div>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
