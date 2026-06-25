@@ -8,6 +8,7 @@ import {
   getDocs,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -88,6 +89,47 @@ const mockStore = {
     { id: 'lesson-001', title: 'درس القديس مارمرقس كاروز ديارنا المصرية', classId: 'class-001', date: '2026-06-12', description: 'نتعلم اليوم عن حياة القديس مارمرقس وكيف أحضر الإيمان المسيحي إلى مصر واستشهاده في الإسكندرية.', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', fileUrl: '/files/st-mark-lesson.pdf', publishedBy: 'mock-servant-001' },
     { id: 'lesson-002', title: 'درس المحبة والعطاء من قصة السامري الصالح', classId: 'class-001', date: '2026-06-05', description: 'قصة السامري الصالح وكيف نساعد كل إنسان محتاج بغض النظر عن جنسه أو دينه.', videoUrl: null, fileUrl: null, publishedBy: 'mock-servant-001' },
   ],
+  news: [
+    { id: 'news-001', category: 'فعالية', title: 'احتفال عيد القيامة المجيد', body: 'تدعو خدمة ماري مرقس ابتدائي بنين الأطفال للاحتفال بعيد القيامة المجيد يوم الأحد القادم مع ترانيم وتمثيليات روحية وتوزيع هدايا.', imageUrl: null, publishedBy: 'أ/ مينا سمير', publishedAt: '2026-04-15', createdAt: new Date() },
+    { id: 'news-002', category: 'إعلان', title: 'بدء التسجيل في مدارس الأحد', body: 'نعلن عن فتح باب التسجيل للعام الدراسي الجديد في مدارس الأحد. يمكن لأولياء الأمور التسجيل من خلال خدام الفصول أو مكتب الخدمة.', imageUrl: null, publishedBy: 'أ/ جرجس فهمي', publishedAt: '2026-04-10', createdAt: new Date() },
+    { id: 'news-003', category: 'خبر', title: 'توزيع جوائز المتميزين', body: 'تم توزيع جوائز المتميزين في الحضور والحفظ خلال الشهر الماضي. نهنئ جميع الأطفال ونشجع الجميع على المواظبة والاجتهاد.', imageUrl: null, publishedBy: 'أ/ فيلوباتير جمال', publishedAt: '2026-03-12', createdAt: new Date() },
+  ],
+  trips: [
+    {
+      id: 'trip-001',
+      title: 'رحلة دير الأنبا بولا',
+      description: 'رحلة روحية مميزة لزيارة دير الأنبا بولا أول السواح في الصحراء الشرقية. يتعرف الأطفال على حياة الرهبان وتاريخ الدير العريق مع أنشطة روحية وترفيهية متنوعة.',
+      price: '١٥٠ جنيه',
+      date: '2026-07-15',
+      location: 'دير الأنبا بولا — البحر الأحمر',
+      deadline: '2026-07-10',
+      gradient: 'linear-gradient(135deg, #2E7D32, #81C784, #4FC3F7)',
+      icon: '⛪'
+    },
+    {
+      id: 'trip-002',
+      title: 'يوم ترفيهي في الملاهي',
+      description: 'يوم مليء بالمرح والألعاب الترفيهية في مدينة الملاهي. فرصة رائعة للأطفال للاستمتاع مع أصدقائهم في جو من البهجة والسعادة تحت إشراف خدام الخدمة.',
+      price: '٢٠٠ جنيه',
+      date: '2026-07-22',
+      location: 'دريم بارك — مدينة ٦ أكتوبر',
+      deadline: '2026-07-18',
+      gradient: 'linear-gradient(135deg, #FF8F00, #FFD54F, #FF7043)',
+      icon: '🎢'
+    },
+    {
+      id: 'trip-003',
+      title: 'رحلة الغردقة الصيفية',
+      description: 'رحلة صيفية لمدة ثلاثة أيام إلى الغردقة على شاطئ البحر الأحمر. تشمل الرحلة السباحة والأنشطة البحرية والألعاب الجماعية مع أوقات روحية وترانيم على الشاطئ.',
+      price: 'مجاناً',
+      date: '2026-08-05',
+      location: 'الغردقة — البحر الأحمر',
+      deadline: '2026-07-28',
+      gradient: 'linear-gradient(135deg, #0288D1, #4FC3F7, #00BCD4)',
+      icon: '🏖️'
+    }
+  ],
+  trip_registrations: []
 };
 
 // Helper: generate unique ID
@@ -170,9 +212,10 @@ export async function assignServantToClass(classId, servantUid, servantName) {
 // ============================================
 export async function getChildrenByClass(classId) {
   if (isFirebaseConfigured && db) {
-    const q = query(collection(db, 'children'), where('classId', '==', classId), orderBy('name'));
+    const q = query(collection(db, 'children'), where('classId', '==', classId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ uid: d.id, ...d.data() }));
+    const data = snapshot.docs.map((d) => ({ uid: d.id, ...d.data() }));
+    return data.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
   }
   return mockStore.children.filter((c) => c.classId === classId);
 }
@@ -221,14 +264,23 @@ export async function createChild({ name, grade, classId, parentContact, servant
 
 export async function updateChildPoints(childUid, pointsDelta, reason = '') {
   if (isFirebaseConfigured && db) {
-    await updateDoc(doc(db, 'children', childUid), { points: increment(pointsDelta) });
-    // Recalculate level
-    const child = await getChildById(childUid);
-    if (child) {
-      const newLevel = calculateLevel(child.points);
-      if (newLevel !== child.level) {
-        await updateDoc(doc(db, 'children', childUid), { level: newLevel });
-      }
+    const currentChild = await getChildById(childUid);
+    if (!currentChild) return;
+
+    const nextPoints = Math.max(0, (currentChild.points || 0) + pointsDelta);
+    await updateDoc(doc(db, 'children', childUid), {
+      points: nextPoints,
+      level: calculateLevel(nextPoints),
+    });
+
+    if (pointsDelta !== 0) {
+      await addDoc(collection(db, 'points_log'), {
+        childUid,
+        classId: currentChild.classId,
+        delta: pointsDelta,
+        reason,
+        createdAt: serverTimestamp(),
+      });
     }
     return;
   }
@@ -236,6 +288,15 @@ export async function updateChildPoints(childUid, pointsDelta, reason = '') {
   if (child) {
     child.points = Math.max(0, child.points + pointsDelta);
     child.level = calculateLevel(child.points);
+    if (pointsDelta !== 0) {
+      mockStore.activityLog.unshift({
+        id: generateId('log'),
+        action: pointsDelta > 0 ? 'إضافة نقاط' : 'خصم نقاط',
+        details: `${child.name} ${pointsDelta > 0 ? '+' : ''}${pointsDelta} نقطة${reason ? ` (${reason})` : ''}`,
+        user: 'النظام',
+        timestamp: new Date(),
+      });
+    }
   }
 }
 
@@ -251,37 +312,121 @@ function calculateLevel(points) {
 // ============================================
 export async function recordAttendance(classId, sessionDate, records, recordedBy) {
   // records = [{ childUid, present }]
+
+  // ── Guard: reject if any required field is missing ──────────────────────────
+  if (!classId || !sessionDate || !recordedBy) {
+    const missingFields = [!classId && 'classId', !sessionDate && 'sessionDate', !recordedBy && 'recordedBy'].filter(Boolean);
+    const err = new Error(`ATTENDANCE_SUBMIT_ERROR: Missing required fields: ${missingFields.join(', ')}`);
+    console.error('ATTENDANCE_SUBMIT_ERROR:', err);
+    throw err;
+  }
+  if (!Array.isArray(records) || records.length === 0) {
+    const err = new Error('ATTENDANCE_SUBMIT_ERROR: records array is empty or invalid');
+    console.error('ATTENDANCE_SUBMIT_ERROR:', err);
+    throw err;
+  }
+
   if (isFirebaseConfigured && db) {
-    const sessionId = `session-${sessionDate}-${classId}`;
-    const promises = records.map((r) =>
-      addDoc(collection(db, 'attendance'), {
-        childUid: r.childUid, classId, date: sessionDate,
-        present: r.present, recordedBy, sessionId,
-        excuseId: null, createdAt: serverTimestamp(),
-      })
-    );
-    await Promise.all(promises);
-    // Award points for present children
-    for (const r of records) {
-      if (r.present) await updateChildPoints(r.childUid, 10);
+    try {
+      const sessionId = `session-${sessionDate}-${classId}`;
+
+      // Fetch existing records for this session to diff against
+      const existingRecords = await getAttendanceByClass(classId);
+      const existingByChild = existingRecords
+        .filter((record) => record.date === sessionDate)
+        .reduce((acc, record) => {
+          acc[record.childUid] = record;
+          return acc;
+        }, {});
+
+      for (const r of records) {
+        // ── Validate individual record ─────────────────────────────────────────
+        if (!r.childUid || r.present === null || r.present === undefined) {
+          console.error('ATTENDANCE_SUBMIT_ERROR: Invalid record entry — childUid or present is null/undefined', r);
+          throw new Error(`ATTENDANCE_SUBMIT_ERROR: Invalid record for childUid=${r.childUid}`);
+        }
+
+        // ── Build a safe, collision-free Firestore document ID ────────────────
+        // Format: <classId>__<sessionDate>__<childUid>  (double underscore separator)
+        // Replace any character outside [A-Za-z0-9_-] with an underscore.
+        const safeClassId  = String(classId).replace(/[^A-Za-z0-9_-]/g, '_');
+        const safeDate     = String(sessionDate).replace(/[^A-Za-z0-9_-]/g, '_');
+        const safeChildUid = String(r.childUid).replace(/[^A-Za-z0-9_-]/g, '_');
+        const recordId     = `${safeClassId}__${safeDate}__${safeChildUid}`;
+
+        const recordRef    = doc(db, 'attendance', recordId);
+        const existing     = existingByChild[r.childUid];
+        const previousPresent = existing ? existing.present : null;
+
+        // ── Write strategy: use create vs update so Firestore rules are satisfied
+        // setDoc without merge always triggers the 'create' rule path for new docs
+        // and 'update' rule path for existing docs — both are correctly defined.
+        if (existing) {
+          // Document already exists → trigger UPDATE rule
+          await setDoc(recordRef, {
+            childUid:   r.childUid,
+            classId,
+            date:       sessionDate,
+            present:    r.present,
+            recordedBy,
+            sessionId,
+            excuseId:   existing.excuseId ?? null,
+            updatedAt:  serverTimestamp(),
+            createdAt:  existing.createdAt ?? serverTimestamp(),
+          });
+        } else {
+          // Document does not exist → trigger CREATE rule
+          await setDoc(recordRef, {
+            childUid:   r.childUid,
+            classId,
+            date:       sessionDate,
+            present:    r.present,
+            recordedBy,
+            sessionId,
+            excuseId:   null,
+            updatedAt:  serverTimestamp(),
+            createdAt:  serverTimestamp(),
+          });
+        }
+
+        // ── Award / revoke points only when presence status actually changes ──
+        if (previousPresent !== r.present) {
+          if (r.present) {
+            await updateChildPoints(r.childUid, 10, 'حضور');
+          } else if (previousPresent === true && r.present === false) {
+            await updateChildPoints(r.childUid, -10, 'تعديل حضور');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('ATTENDANCE_SUBMIT_ERROR:', err);
+      throw err;
     }
     return;
   }
 
+  // ── Mock mode ────────────────────────────────────────────────────────────────
   const sessionId = `session-${sessionDate}-${classId}`;
   // Remove existing attendance for this session
   mockStore.attendance = mockStore.attendance.filter(
     (a) => !(a.classId === classId && a.date === sessionDate)
   );
   records.forEach((r) => {
+    const previous = mockStore.attendance.find((a) => a.classId === classId && a.date === sessionDate && a.childUid === r.childUid);
     mockStore.attendance.push({
       id: generateId('att'), childUid: r.childUid, classId, date: sessionDate,
       present: r.present, recordedBy, sessionId,
     });
-    if (r.present) {
+    if (previous?.present !== r.present && r.present) {
       const child = mockStore.children.find((c) => c.uid === r.childUid);
       if (child) {
         child.points += 10;
+        child.level = calculateLevel(child.points);
+      }
+    } else if (previous?.present === true && r.present === false) {
+      const child = mockStore.children.find((c) => c.uid === r.childUid);
+      if (child) {
+        child.points = Math.max(0, child.points - 10);
         child.level = calculateLevel(child.points);
       }
     }
@@ -292,11 +437,11 @@ export async function getAttendanceByClass(classId, dateFrom, dateTo) {
   if (isFirebaseConfigured && db) {
     const q = query(
       collection(db, 'attendance'),
-      where('classId', '==', classId),
-      orderBy('date', 'desc')
+      where('classId', '==', classId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return data.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }
   return mockStore.attendance
     .filter((a) => a.classId === classId)
@@ -307,11 +452,11 @@ export async function getAttendanceByChild(childUid) {
   if (isFirebaseConfigured && db) {
     const q = query(
       collection(db, 'attendance'),
-      where('childUid', '==', childUid),
-      orderBy('date', 'desc')
+      where('childUid', '==', childUid)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return data.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }
   return mockStore.attendance
     .filter((a) => a.childUid === childUid)
@@ -429,11 +574,11 @@ export async function getAbsenceExcusesByClass(classId) {
   if (isFirebaseConfigured && db) {
     const q = query(
       collection(db, 'absence_excuses'),
-      where('classId', '==', classId),
-      orderBy('sessionDate', 'desc')
+      where('classId', '==', classId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return data.sort((a, b) => (b.sessionDate || '').localeCompare(a.sessionDate || ''));
   }
   return mockStore.absence_excuses
     .filter((e) => e.classId === classId)
@@ -444,11 +589,11 @@ export async function getAbsenceExcusesByChild(childUid) {
   if (isFirebaseConfigured && db) {
     const q = query(
       collection(db, 'absence_excuses'),
-      where('childUid', '==', childUid),
-      orderBy('sessionDate', 'desc')
+      where('childUid', '==', childUid)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return data.sort((a, b) => (b.sessionDate || '').localeCompare(a.sessionDate || ''));
   }
   return mockStore.absence_excuses
     .filter((e) => e.childUid === childUid)
@@ -487,11 +632,11 @@ export async function getVersesByChild(childUid) {
   if (isFirebaseConfigured && db) {
     const q = query(
       collection(db, 'verses'),
-      where('childUid', '==', childUid),
-      orderBy('assignedDate', 'desc')
+      where('childUid', '==', childUid)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return data.sort((a, b) => new Date(b.assignedDate || 0) - new Date(a.assignedDate || 0));
   }
   return mockStore.verses.filter((v) => v.childUid === childUid);
 }
@@ -503,11 +648,11 @@ export async function getQuizzesByClass(classId) {
   if (isFirebaseConfigured && db) {
     const q = query(
       collection(db, 'quizzes'),
-      where('classId', '==', classId),
-      orderBy('dueDate', 'desc')
+      where('classId', '==', classId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return data.sort((a, b) => new Date(b.dueDate || 0) - new Date(a.dueDate || 0));
   }
   return mockStore.quizzes.filter((q) => q.classId === classId);
 }
@@ -538,11 +683,261 @@ export async function getLessonsByClass(classId) {
   if (isFirebaseConfigured && db) {
     const q = query(
       collection(db, 'lessons'),
-      where('classId', '==', classId),
-      orderBy('date', 'desc')
+      where('classId', '==', classId)
+    );
+    const snapshot = await getDocs(q);
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return data.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }
+  return mockStore.lessons.filter((l) => l.classId === classId);
+}
+
+export async function createLesson({ title, classId, date, description, videoUrl, fileUrl, publishedBy }) {
+  const payload = {
+    title,
+    classId,
+    date,
+    description,
+    videoUrl: videoUrl || null,
+    fileUrl: fileUrl || null,
+    publishedBy,
+    updatedAt: serverTimestamp(),
+  };
+
+  if (isFirebaseConfigured && db) {
+    const docRef = await addDoc(collection(db, 'lessons'), {
+      ...payload,
+      createdAt: serverTimestamp(),
+    });
+    return { id: docRef.id, ...payload, createdAt: new Date().toISOString() };
+  }
+
+  const newLesson = {
+    id: generateId('lesson'),
+    ...payload,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  mockStore.lessons.unshift(newLesson);
+  return newLesson;
+}
+
+export async function updateLesson(lessonId, data) {
+  const payload = {
+    ...data,
+    videoUrl: data.videoUrl || null,
+    fileUrl: data.fileUrl || null,
+    updatedAt: serverTimestamp(),
+  };
+
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, 'lessons', lessonId), payload);
+    return;
+  }
+
+  const lesson = mockStore.lessons.find((l) => l.id === lessonId);
+  if (lesson) Object.assign(lesson, payload, { updatedAt: new Date() });
+}
+
+export async function deleteLesson(lessonId) {
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, 'lessons', lessonId));
+    return;
+  }
+
+  mockStore.lessons = mockStore.lessons.filter((l) => l.id !== lessonId);
+}
+
+// ============================================
+// News & Announcements
+// ============================================
+export async function getNews() {
+  if (isFirebaseConfigured && db) {
+    const q = query(collection(db, 'news'), orderBy('publishedAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+
+  return [...mockStore.news].sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+}
+
+export async function createNews({ title, body, category, imageUrl, publishedBy }) {
+  const publishedAt = new Date().toISOString().split('T')[0];
+  const payload = {
+    title,
+    body,
+    category: category || 'إعلان',
+    imageUrl: imageUrl || null,
+    publishedBy,
+    publishedAt,
+    updatedAt: serverTimestamp(),
+  };
+
+  if (isFirebaseConfigured && db) {
+    const docRef = await addDoc(collection(db, 'news'), {
+      ...payload,
+      createdAt: serverTimestamp(),
+    });
+    return { id: docRef.id, ...payload, createdAt: new Date().toISOString() };
+  }
+
+  const newsItem = {
+    id: generateId('news'),
+    ...payload,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  mockStore.news.unshift(newsItem);
+  return newsItem;
+}
+
+export async function updateNews(newsId, data) {
+  const payload = {
+    ...data,
+    imageUrl: data.imageUrl || null,
+    updatedAt: serverTimestamp(),
+  };
+
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, 'news', newsId), payload);
+    return;
+  }
+
+  const item = mockStore.news.find((n) => n.id === newsId);
+  if (item) Object.assign(item, payload, { updatedAt: new Date() });
+}
+
+export async function deleteNews(newsId) {
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, 'news', newsId));
+    return;
+  }
+
+  mockStore.news = mockStore.news.filter((n) => n.id !== newsId);
+}
+
+// ============================================
+// Verses Assignment & Verification
+// ============================================
+export async function assignVerseToChild(childUid, classId, verseText, reference, pointsAwarded) {
+  if (isFirebaseConfigured && db) {
+    const docRef = await addDoc(collection(db, 'verses'), {
+      childUid,
+      classId,
+      verseText,
+      reference,
+      assignedDate: serverTimestamp(),
+      memorizedDate: null,
+      verifiedBy: null,
+      pointsAwarded,
+    });
+    return {
+      id: docRef.id,
+      childUid,
+      classId,
+      verseText,
+      reference,
+      assignedDate: new Date().toISOString(),
+      memorizedDate: null,
+      verifiedBy: null,
+      pointsAwarded,
+    };
+  }
+  const newVerse = {
+    id: generateId('verse'),
+    childUid,
+    classId,
+    verseText,
+    reference,
+    assignedDate: new Date().toISOString(),
+    memorizedDate: null,
+    verifiedBy: null,
+    pointsAwarded,
+  };
+  mockStore.verses.unshift(newVerse);
+  return newVerse;
+}
+
+export async function markVerseAsMemorized(verseId, verifiedBy, childUid, pointsAwarded) {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, 'verses', verseId), {
+      memorizedDate: serverTimestamp(),
+      verifiedBy,
+    });
+    await updateChildPoints(childUid, pointsAwarded, 'حفظ آية');
+    return;
+  }
+  const verse = mockStore.verses.find((v) => v.id === verseId);
+  if (verse) {
+    verse.memorizedDate = new Date().toISOString();
+    verse.verifiedBy = verifiedBy;
+    await updateChildPoints(childUid, pointsAwarded, 'حفظ آية');
+  }
+}
+
+// ============================================
+// Trips & Registrations
+// ============================================
+export async function getTrips() {
+  if (isFirebaseConfigured && db) {
+    const q = query(collection(db, 'trips'), orderBy('date', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  return [...mockStore.trips];
+}
+
+export async function registerForTrip({ tripId, childUid, childName, parentContact, notes, registeredBy }) {
+  if (isFirebaseConfigured && db) {
+    const docRef = await addDoc(collection(db, 'trip_registrations'), {
+      tripId,
+      childUid,
+      childName,
+      parentContact,
+      notes,
+      registeredBy,
+      registeredAt: serverTimestamp(),
+    });
+    return { id: docRef.id, tripId, childUid, childName, parentContact, notes, registeredBy };
+  }
+  const newReg = {
+    id: generateId('reg'),
+    tripId,
+    childUid,
+    childName,
+    parentContact,
+    notes,
+    registeredBy,
+    registeredAt: new Date().toISOString(),
+  };
+  mockStore.trip_registrations.unshift(newReg);
+  return newReg;
+}
+
+// Get trip registrations (either filtered by tripId or all)
+export async function getTripRegistrations(tripId = null) {
+  if (isFirebaseConfigured && db) {
+    let q = collection(db, 'trip_registrations');
+    if (tripId) {
+      q = query(q, where('tripId', '==', tripId));
+    }
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  if (tripId) {
+    return mockStore.trip_registrations.filter((r) => r.tripId === tripId);
+  }
+  return [...mockStore.trip_registrations];
+}
+
+export async function getRegistrationsByChild(childUid) {
+  if (isFirebaseConfigured && db) {
+    const q = query(
+      collection(db, 'trip_registrations'),
+      where('childUid', '==', childUid)
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
-  return mockStore.lessons.filter((l) => l.classId === classId);
+  return mockStore.trip_registrations.filter((r) => r.childUid === childUid);
 }

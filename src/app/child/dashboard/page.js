@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useVerses, useQuizzes, useLessons } from '@/lib/hooks';
+import { getRegistrationsByChild, getTrips } from '@/lib/firestore';
 import StatCard from '@/components/ui/StatCard';
 
 export default function ChildDashboardPage() {
@@ -9,6 +11,9 @@ export default function ChildDashboardPage() {
   const { verses } = useVerses(user?.uid);
   const { quizzes } = useQuizzes(user?.classId);
   const { lessons } = useLessons(user?.classId);
+
+  const [registeredTrips, setRegisteredTrips] = useState([]);
+  const [loadingTrips, setLoadingTrips] = useState(false);
 
   const points = user?.points || 0;
   const level = user?.level || 'مبتدئ';
@@ -26,7 +31,35 @@ export default function ChildDashboardPage() {
   // Calculate child stats
   const memorizedCount = verses.filter((v) => v.memorizedDate).length;
   const completedQuizzesCount = quizzes.filter((q) => q.submissions && q.submissions[user?.uid]).length;
-  const totalLessonsCount = lessons.length;
+
+  // Fetch registered trips on mount
+  useEffect(() => {
+    async function loadRegisteredTrips() {
+      if (!user?.uid) return;
+      setLoadingTrips(true);
+      try {
+        const [regs, allTrips] = await Promise.all([
+          getRegistrationsByChild(user.uid),
+          getTrips()
+        ]);
+        const enriched = regs.map((reg) => {
+          const trip = allTrips.find((t) => t.id === reg.tripId);
+          return {
+            ...reg,
+            tripTitle: trip ? trip.title : 'رحلة غير معروفة',
+            tripDate: trip ? trip.date : null,
+            tripLocation: trip ? trip.location : '',
+            tripIcon: trip ? trip.icon : '✈️',
+          };
+        }).filter(r => r.tripDate);
+        setRegisteredTrips(enriched);
+      } catch (err) {
+        console.error('Error loading registered trips:', err);
+      }
+      setLoadingTrips(false);
+    }
+    loadRegisteredTrips();
+  }, [user]);
 
   // Badges calculation
   const badges = [];
@@ -52,7 +85,6 @@ export default function ChildDashboardPage() {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* Animated background circles */}
         <div style={{
           position: 'absolute', width: '300px', height: '300px', borderRadius: '50%',
           background: 'rgba(255,255,255,0.1)', top: '-50px', left: '-50px', pointerEvents: 'none'
@@ -88,13 +120,13 @@ export default function ChildDashboardPage() {
 
       {/* Stats row */}
       <div className="stat-cards-grid" style={{ marginBottom: '2rem' }}>
-        <StatCard icon="💰" number={points} label="مجموع النقاط" />
-        <StatCard icon="🏆" number={level} label="المستوى الحالي" />
-        <StatCard icon="📖" number={memorizedCount} label="الآيات المحفوظة" />
-        <StatCard icon="📝" number={completedQuizzesCount} label="المسابقات المكتملة" />
+        <StatCard icon="💰" value={points} label="مجموع النقاط" />
+        <StatCard icon="🏆" value={level} label="المستوى الحالي" />
+        <StatCard icon="📖" value={memorizedCount} label="الآيات المحفوظة" />
+        <StatCard icon="📝" value={completedQuizzesCount} label="المسابقات المكتملة" />
       </div>
 
-      <div className="dashboard-grid">
+      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
         {/* Level Progress Card */}
         <div className="dashboard-card" style={{ padding: '1.5rem' }}>
           <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -110,7 +142,6 @@ export default function ChildDashboardPage() {
               )}
             </div>
 
-            {/* Progress Bar Container */}
             <div style={{ background: '#EDF2F7', borderRadius: '10px', height: '20px', width: '100%', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
               <div style={{
                 background: 'linear-gradient(90deg, var(--sky-blue) 0%, var(--med-blue) 100%)',
@@ -163,6 +194,49 @@ export default function ChildDashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Registered Trips Full Width Card */}
+      <div className="dashboard-card" style={{ padding: '1.5rem' }}>
+        <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+          ✈️ رحلاتي القادمة والمسجل بها
+        </h3>
+        {loadingTrips ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-light)' }}>جارٍ تحميل الرحلات...</p>
+        ) : registeredTrips.length === 0 ? (
+          <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-light)', border: '1px dashed rgba(135,206,235,0.2)', borderRadius: '12px' }}>
+            <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '0.5rem' }}>🏜️</span>
+            <p style={{ margin: 0, fontSize: '0.95rem' }}>لم تقم بالتسجيل في أي رحلة قادمة بعد.</p>
+            <a href="/trips" style={{ color: 'var(--sky-blue-dark)', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'underline', marginTop: '0.75rem', display: 'inline-block' }}>
+              عرض الرحلات المتاحة للتسجيل ➔
+            </a>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+            {registeredTrips.map((reg) => (
+              <div key={reg.id} style={{
+                background: 'rgba(135,206,235,0.03)',
+                border: '1px solid rgba(135,206,235,0.1)',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1.25rem'
+              }}>
+                <span style={{ fontSize: '3rem' }}>{reg.tripIcon}</span>
+                <div>
+                  <strong style={{ fontSize: '1.05rem', display: 'block', fontFamily: 'Cairo' }}>{reg.tripTitle}</strong>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-light)', display: 'block', marginTop: '0.3rem' }}>
+                    📅 {new Date(reg.tripDate).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })}
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-light)', display: 'block' }}>
+                    📍 {reg.tripLocation}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );

@@ -9,7 +9,7 @@ import {
   getAttendanceByClass, getDashboardStats, getClassStats,
   getServants, getActivityLog,
   getAbsenceExcusesByClass, getAbsenceExcusesByChild, getAllAbsenceExcuses,
-  getVersesByChild, getQuizzesByClass, getLessonsByClass,
+  getVersesByChild, getQuizzesByClass, getLessonsByClass, getNews,
 } from './firestore';
 
 /**
@@ -289,3 +289,25 @@ export function useLessons(classId) {
   return { lessons, loading, refresh };
 }
 
+/**
+ * useNews — fetches public news and announcements
+ */
+export function useNews() {
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getNews();
+      setNews(data);
+    } catch (err) {
+      console.error('useNews error:', err);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { news, loading, refresh };
+}

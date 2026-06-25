@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { getChildById, getAttendanceByChild, getAbsenceExcusesByChild } from '@/lib/firestore';
+import { getChildById, getAttendanceByChild, getAbsenceExcusesByChild, getRegistrationsByChild, getTrips } from '@/lib/firestore';
 import StatCard from '@/components/ui/StatCard';
 import DataTable from '@/components/ui/DataTable';
 import EmptyState from '@/components/ui/EmptyState';
@@ -13,6 +13,7 @@ export default function ParentDashboardPage() {
   const [child, setChild] = useState(null);
   const [records, setRecords] = useState([]);
   const [excuses, setExcuses] = useState([]);
+  const [registeredTrips, setRegisteredTrips] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,14 +24,28 @@ export default function ParentDashboardPage() {
       }
       setLoading(true);
       try {
-        const [childData, attData, excuseData] = await Promise.all([
+        const [childData, attData, excuseData, regs, allTrips] = await Promise.all([
           getChildById(user.linkedChildUid),
           getAttendanceByChild(user.linkedChildUid),
           getAbsenceExcusesByChild(user.linkedChildUid),
+          getRegistrationsByChild(user.linkedChildUid),
+          getTrips()
         ]);
         setChild(childData);
         setRecords(attData);
         setExcuses(excuseData);
+
+        const enriched = regs.map((reg) => {
+          const trip = allTrips.find((t) => t.id === reg.tripId);
+          return {
+            ...reg,
+            tripTitle: trip ? trip.title : 'رحلة غير معروفة',
+            tripDate: trip ? trip.date : null,
+            tripLocation: trip ? trip.location : '',
+            tripIcon: trip ? trip.icon : '✈️',
+          };
+        }).filter(r => r.tripDate);
+        setRegisteredTrips(enriched);
       } catch (err) {
         console.error('Error loading parent dashboard data:', err);
       }
@@ -137,9 +152,49 @@ export default function ParentDashboardPage() {
 
       {/* Child Stats */}
       <div className="stat-cards-grid" style={{ marginBottom: '2rem' }}>
-        <StatCard icon="💰" number={child.points} label="مجموع نقاط الطفل" />
-        <StatCard icon="🏆" number={child.level} label="مستوى الطفل" />
-        <StatCard icon="📊" number={`${attendanceRate}%`} label="نسبة الحضور" />
+        <StatCard icon="💰" value={child.points} label="مجموع نقاط الطفل" />
+        <StatCard icon="🏆" value={child.level} label="مستوى الطفل" />
+        <StatCard icon="📊" value={`${attendanceRate}%`} label="نسبة الحضور" />
+      </div>
+
+      {/* Trips registration section */}
+      <div className="dashboard-card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+          ✈️ رحلات الطفل المسجل بها
+        </h3>
+        {registeredTrips.length === 0 ? (
+          <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-light)', border: '1px dashed rgba(135,206,235,0.2)', borderRadius: '12px' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>لم يتم تسجيل الطفل في أي رحلة قادمة بعد.</p>
+            <a href="/trips" style={{ color: 'var(--sky-blue-dark)', fontSize: '0.85rem', fontWeight: 'bold', textDecoration: 'underline', marginTop: '0.5rem', display: 'inline-block' }}>
+              تصفح الرحلات المتاحة للتسجيل ➔
+            </a>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+            {registeredTrips.map((reg) => (
+              <div key={reg.id} style={{
+                background: 'rgba(135,206,235,0.03)',
+                border: '1px solid rgba(135,206,235,0.1)',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1.25rem'
+              }}>
+                <span style={{ fontSize: '3rem' }}>{reg.tripIcon}</span>
+                <div>
+                  <strong style={{ fontSize: '1.05rem', display: 'block', fontFamily: 'Cairo' }}>{reg.tripTitle}</strong>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-light)', display: 'block', marginTop: '0.3rem' }}>
+                    📅 {new Date(reg.tripDate).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })}
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-light)', display: 'block' }}>
+                    📍 {reg.tripLocation}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="dashboard-card" style={{ padding: '1.5rem' }}>

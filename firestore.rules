@@ -33,6 +33,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.classId;
     }
 
+    function getLinkedChildUid() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedChildUid;
+    }
+
+    function getChildClassId(childUid) {
+      return get(/databases/$(database)/documents/children/$(childUid)).data.classId;
+    }
+
     // ============================================
     // Users Collection
     // ============================================
@@ -64,9 +72,12 @@ service cloud.firestore {
     match /children/{childId} {
       // Admin: full access
       allow read, write: if isAdmin();
-      // Servants: read/write only their class
-      allow read, write: if isServant() &&
+      // Servants: read/update only their class, preserving class isolation
+      allow read: if isServant() &&
         resource.data.classId == getUserClassId();
+      allow update: if isServant() &&
+        resource.data.classId == getUserClassId() &&
+        request.resource.data.classId == resource.data.classId;
       // Servants can create children in their class
       allow create: if isServant() &&
         request.resource.data.classId == getUserClassId();
@@ -83,9 +94,12 @@ service cloud.firestore {
     match /attendance/{recordId} {
       // Admin: full access
       allow read, write: if isAdmin();
-      // Servants: read/write only their class
-      allow read, write: if isServant() &&
+      // Servants: read/update only their class, preserving class isolation
+      allow read: if isServant() &&
         resource.data.classId == getUserClassId();
+      allow update: if isServant() &&
+        resource.data.classId == getUserClassId() &&
+        request.resource.data.classId == resource.data.classId;
       allow create: if isServant() &&
         request.resource.data.classId == getUserClassId();
       // Children: read own attendance
@@ -95,6 +109,17 @@ service cloud.firestore {
       allow read: if isParent() &&
         resource.data.childUid ==
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedChildUid;
+    }
+
+    // ============================================
+    // Points Log Collection
+    // ============================================
+    match /points_log/{logId} {
+      allow read, write: if isAdmin();
+      allow read: if isServant() &&
+        resource.data.classId == getUserClassId();
+      allow create: if isServant() &&
+        request.resource.data.classId == getUserClassId();
     }
 
     // ============================================
@@ -112,7 +137,8 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acknowledgedBy', 'acknowledgedAt']);
       // Parents: create excuses for their own child, read own excuses
       allow create: if isParent() &&
-        request.resource.data.parentUid == request.auth.uid;
+        request.resource.data.parentUid == request.auth.uid &&
+        request.resource.data.childUid == getLinkedChildUid();
       allow read: if isParent() &&
         resource.data.parentUid == request.auth.uid;
     }
@@ -122,8 +148,12 @@ service cloud.firestore {
     // ============================================
     match /verses/{verseId} {
       allow read, write: if isAdmin();
-      allow read, write: if isServant() &&
+      allow read: if isServant() &&
         resource.data.classId == getUserClassId();
+      allow update: if isServant() &&
+        resource.data.classId == getUserClassId() &&
+        request.resource.data.classId == resource.data.classId &&
+        request.resource.data.childUid == resource.data.childUid;
       allow create: if isServant() &&
         request.resource.data.classId == getUserClassId();
       allow read: if isChild() &&
@@ -135,13 +165,41 @@ service cloud.firestore {
     // ============================================
     match /quizzes/{quizId} {
       allow read, write: if isAdmin();
-      allow read, write: if isServant() &&
+      allow read: if isServant() &&
         resource.data.classId == getUserClassId();
+      allow update: if isServant() &&
+        resource.data.classId == getUserClassId() &&
+        request.resource.data.classId == resource.data.classId;
       allow create: if isServant() &&
         request.resource.data.classId == getUserClassId();
       allow read: if isChild() &&
         resource.data.classId ==
           get(/databases/$(database)/documents/children/$(request.auth.uid)).data.classId;
+      allow update: if isChild() &&
+        resource.data.classId == getChildClassId(request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submissions']) &&
+        request.resource.data.submissions[request.auth.uid].score is number &&
+        request.resource.data.submissions[request.auth.uid].pointsEarned is number;
+    }
+
+    // ============================================
+    // Lessons Collection
+    // ============================================
+    match /lessons/{lessonId} {
+      allow read, write: if isAdmin();
+      allow read: if isServant() &&
+        resource.data.classId == getUserClassId();
+      allow create: if isServant() &&
+        request.resource.data.classId == getUserClassId();
+      allow update: if isServant() &&
+        resource.data.classId == getUserClassId() &&
+        request.resource.data.classId == resource.data.classId;
+      allow delete: if isServant() &&
+        resource.data.classId == getUserClassId();
+      allow read: if isChild() &&
+        resource.data.classId == getChildClassId(request.auth.uid);
+      allow read: if isParent() &&
+        resource.data.classId == getChildClassId(getLinkedChildUid());
     }
 
     // ============================================
@@ -160,8 +218,26 @@ service cloud.firestore {
     match /trips/{tripId} {
       // Everyone can read trips
       allow read: if true;
-      // Servants and admin can create/edit
-      allow write: if isAdmin() || isServant();
+      // Phase 1 keeps trip management admin-only until servant trip CRUD ships.
+      allow write: if isAdmin();
+    }
+
+    // ============================================
+    // Trip Registrations Collection
+    // ============================================
+    match /trip_registrations/{registrationId} {
+      allow read, write: if isAdmin();
+      allow read: if isServant();
+      allow read: if isChild() &&
+        resource.data.childUid == request.auth.uid;
+      allow read: if isParent() &&
+        resource.data.childUid == getLinkedChildUid();
+      allow create: if isChild() &&
+        request.resource.data.childUid == request.auth.uid &&
+        request.resource.data.registeredBy == request.auth.uid;
+      allow create: if isParent() &&
+        request.resource.data.childUid == getLinkedChildUid() &&
+        request.resource.data.registeredBy == request.auth.uid;
     }
   }
 }

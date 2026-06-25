@@ -3,65 +3,19 @@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { motion } from 'framer-motion';
+import { useNews } from '@/lib/hooks';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import EmptyState from '@/components/ui/EmptyState';
 
-const newsItems = [
-  {
-    id: 1,
-    category: 'فعالية',
-    title: 'احتفال عيد القيامة المجيد',
-    text: 'تثور خدمة ماري مرقس ابتدائي بنين الاحتفال بعيد القيامة المجيد يوم الأحد القادم. سيتضمن الاحتفال ترانيم وتمثيليات روحية وتوزيع هدايا على الأطفال المشاركين.',
-    date: '١٥ أبريل ٢٠٢٦',
-    author: 'أ/ مينا سمير',
-    gradient: 'linear-gradient(135deg, #87CEEB, #4A90D9)',
-  },
-  {
-    id: 2,
-    category: 'إعلان',
-    title: 'بدء التسجيل في مدارس الأحد',
-    text: 'نعلن عن فتح باب التسجيل للعام الدراسي الجديد في مدارس الأحد. يمكن لأولياء الأمور التسجيل لأبنائهم من خلال التواصل مع خدام الفصول أو زيارة مكتب الخدمة بالكنيسة.',
-    date: '١٠ أبريل ٢٠٢٦',
-    author: 'أ/ جرجس فهمي',
-    gradient: 'linear-gradient(135deg, #4A90D9, #FFF9C4)',
-  },
-  {
-    id: 3,
-    category: 'فعالية',
-    title: 'مسابقة حفظ سفر المزامير',
-    text: 'تنظم الخدمة مسابقة حفظ مزامير مختارة لجميع المراحل. ستقام التصفيات خلال شهر مايو والنهائيات في يونيو مع جوائز قيمة للفائزين.',
-    date: '٥ أبريل ٢٠٢٦',
-    author: 'أ/ مارك عادل',
-    gradient: 'linear-gradient(135deg, #FFF9C4, #87CEEB)',
-  },
-  {
-    id: 4,
-    category: 'خبر',
-    title: 'رحلة ترفيهية لأطفال الخدمة',
-    text: 'تنثم الخدمة رحلة ترفيهية لأطفال المرحلة الابتدائية إلى حديقة الأسرة. ستشمل الرحلة ألعاب جماعية ومسابقات ووجبة غداء مشتركة في جو من المرح والبهجة.',
-    date: '٢٨ مارس ٢٠٢٦',
-    author: 'أ/ بيشوي ناصف',
-    gradient: 'linear-gradient(135deg, #87CEEB, #FFF9C4)',
-  },
-  {
-    id: 5,
-    category: 'إعلان',
-    title: 'اجتماع أولياء الأمور الشهري',
-    text: 'ندعو جميع أولياء الأمور لحضور الاجتماع الشهري يوم الجمعة القادم بعد القداس الإلهي. سيتم مناقشة خطة الخدمة للفترة القادمة ومتابعة مستوى الأطفال الروحي والتعليمي.',
-    date: '٢٠ مارس ٢٠٢٦',
-    author: 'أبونا يوحنا',
-    gradient: 'linear-gradient(135deg, #4A90D9, #87CEEB)',
-  },
-  {
-    id: 6,
-    category: 'خبر',
-    title: 'توزيع جوائز المتميزين',
-    text: 'تم توزيع جوائز المتميزين في الحضور والحفظ خلال الشهر الماضي. نهنئ جميع الأطفال المتميزين ونشجع الجميع على المواظبة والاجتهاد في حضور مدارس الأحد.',
-    date: '١٢ مارس ٢٠٢٦',
-    author: 'أ/ فيلوباتير جمال',
-    gradient: 'linear-gradient(135deg, #FFF9C4, #4A90D9)',
-  },
+const gradients = [
+  'linear-gradient(135deg, #87CEEB, #4A90D9)',
+  'linear-gradient(135deg, #4A90D9, #FFF9C4)',
+  'linear-gradient(135deg, #FFF9C4, #87CEEB)',
 ];
 
 export default function NewsPage() {
+  const { news, loading } = useNews();
+
   return (
     <>
       <Header />
@@ -89,8 +43,17 @@ export default function NewsPage() {
       {/* News Grid */}
       <section className="section">
         <div className="container">
-          <div className="news-grid">
-            {newsItems.map((item, index) => (
+          {loading ? (
+            <LoadingSpinner text="جاري تحميل الأخبار..." />
+          ) : news.length === 0 ? (
+            <EmptyState
+              icon="📰"
+              title="لا توجد أخبار منشورة"
+              description="سيتم عرض الأخبار والإعلانات هنا فور نشرها من لوحة التحكم."
+            />
+          ) : (
+            <div className="news-grid">
+            {news.map((item, index) => (
               <motion.div
                 key={item.id}
                 className="card"
@@ -103,7 +66,7 @@ export default function NewsPage() {
                   style={{
                     width: '100%',
                     height: '200px',
-                    background: item.gradient,
+                    background: gradients[index % gradients.length],
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -116,15 +79,16 @@ export default function NewsPage() {
                   <h3 className="card-title" style={{ marginTop: '0.5rem' }}>
                     {item.title}
                   </h3>
-                  <p className="card-text">{item.text}</p>
+                  <p className="card-text">{item.body}</p>
                   <div className="card-meta">
-                    <span>📅 {item.date}</span>
-                    <span>✍️ {item.author}</span>
+                    <span>📅 {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('ar-EG') : '—'}</span>
+                    <span>✍️ {item.publishedBy || 'خدمة ماري مرقس'}</span>
                   </div>
                 </div>
               </motion.div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 

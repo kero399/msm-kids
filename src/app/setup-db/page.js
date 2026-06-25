@@ -41,6 +41,10 @@ const SEED_DATA = {
   lessons: [
     { title: 'درس القديس مارمرقس كاروز ديارنا المصرية', classId: 'class-001', date: '2026-06-12', description: 'نتعلم اليوم عن حياة القديس مارمرقس وكيف أحضر الإيمان المسيحي إلى مصر واستشهاده في الإسكندرية.', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', fileUrl: null },
     { title: 'درس المحبة والعطاء من قصة السامري الصالح', classId: 'class-001', date: '2026-06-05', description: 'قصة السامري الصالح وكيف نساعد كل إنسان محتاج بغض النظر عن جنسه أو دينه.', videoUrl: null, fileUrl: null },
+  ],
+  news: [
+    { category: 'إعلان', title: 'بدء التسجيل في مدارس الأحد', body: 'نعلن عن فتح باب التسجيل للعام الدراسي الجديد في مدارس الأحد. يمكن لأولياء الأمور التسجيل من خلال خدام الفصول أو مكتب الخدمة.' },
+    { category: 'خبر', title: 'توزيع جوائز المتميزين', body: 'تم توزيع جوائز المتميزين في الحضور والحفظ خلال الشهر الماضي. نهنئ جميع الأطفال ونشجع الجميع على المواظبة والاجتهاد.' },
   ]
 };
 
@@ -269,6 +273,22 @@ export default function SetupDatabasePage() {
         });
       }
       addLog('تم إنشاء الدروس بنجاح.');
+
+      // 10. Seed News
+      addLog('بدء إنشاء الأخبار والإعلانات...');
+      for (const n of SEED_DATA.news) {
+        await addDoc(collection(db, 'news'), {
+          title: n.title,
+          body: n.body,
+          category: n.category,
+          imageUrl: null,
+          publishedBy: 'المسؤول أ. فادي شكري',
+          publishedAt: new Date().toISOString().split('T')[0],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      addLog('تم إنشاء الأخبار والإعلانات بنجاح.');
 
       addLog('تمت تهيئة قاعدة البيانات بالكامل بنجاح! 🎉');
       setSuccess(true);
